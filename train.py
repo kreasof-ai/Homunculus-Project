@@ -5,7 +5,7 @@ import torch.optim as optim
 from saveModel import save_model_weights, load_model_weights
 from main import TransformerModel
 
-from tokenizers import Tokenizer
+from tokenizers import Tokenizer, processors
 
 # Define the constants
 VOCAB_SIZE = 32000
@@ -24,8 +24,17 @@ LOSS_THRESHOLD = 2.0  # Loss value threshold for increasing iterations
 model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE)
 
 
-# Load the tokenizer
+# Load tokenizer
 tokenizer = Tokenizer.from_file("bpe_tokenizer_autoregressive.json")
+tokenizer.post_processor = processors.TemplateProcessing(
+    single="[CLS] $A [SEP]",
+    pair="[CLS] $A [SEP] $B:1 [SEP]:1",
+    special_tokens=[
+        ("[CLS]", tokenizer.token_to_id("[CLS]")),
+        ("[SEP]", tokenizer.token_to_id("[SEP]")),
+    ],
+)
+
 
 # Define the loss function, confidence loss, and optimizer
 criterion = nn.CrossEntropyLoss(ignore_index=tokenizer.token_to_id("[PAD]"))

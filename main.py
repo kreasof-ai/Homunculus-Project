@@ -3,6 +3,7 @@ import torch.nn as nn
 
 from RoPE import RotaryPositionalEmbedding, apply_rotary_pos_emb
 from activation import GeGLU
+from ViT import VisionTransformer
 
 class TransformerBlock(nn.Module):
     def __init__(self, embed_size, num_heads):
@@ -47,8 +48,9 @@ class TransformerBlock(nn.Module):
         return x, (k, v)
 
 class TransformerModel(nn.Module):
-    def __init__(self, vocab_size, embed_size, num_heads, num_layers, context_size):
+    def __init__(self, vocab_size, embed_size, num_heads, num_layers, context_size, img_size, patch_size, vit_layers):
         super(TransformerModel, self).__init__()
+        self.vocab_size = vocab_size
         self.embedding = nn.Embedding(vocab_size, embed_size)
         self.layers = nn.ModuleList([
             TransformerBlock(embed_size, num_heads) for _ in range(num_layers)
@@ -56,8 +58,16 @@ class TransformerModel(nn.Module):
         self.fc = nn.Linear(embed_size, vocab_size)
         self.confidence_fc = nn.Linear(embed_size, 1)  # Confidence prediction layer
         self.context_size = context_size
+        self.vit = VisionTransformer(img_size, patch_size, embed_size, num_heads, vit_layers)
 
-    def forward(self, x, num_iterations=1, use_cache=False):
+    def forward(self, x, img=None, num_iterations=1, use_cache=False):
+        if img is not None:
+            img_embedding = self.vit(img, use_cache=use_cache)
+            img_start_token = self.embedding(torch.tensor([self.vocab_size-2]).to(x.device))  # [img] token
+            img_end_token = self.embedding(torch.tensor([self.vocab_size-1]).to(x.device))    # [/img] token
+            img_seq = torch.cat((img_start_token.unsqueeze(0), img_embedding, img_end_token.unsqueeze(0)), dim=1)
+            x = torch.cat((x, img_seq), dim=1)
+        
         x = self.embedding(x)
         caches = [[] for _ in range(len(self.layers))]
         for _ in range(num_iterations):
