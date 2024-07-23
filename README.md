@@ -1,7 +1,7 @@
 # Internal Latent Loop Transformer
 (Multiple internal inference loop transformer model)
 
-![Internal latent loop](https://github.com/user-attachments/assets/f3eec20e-14a6-43dd-b3fd-ee911aac863a)
+![Internal latent loop (1)](https://github.com/user-attachments/assets/28d00603-dd69-4f16-a854-ed738e03dd7a)
 
 This is a simple implementation of the iterable Transformer model, where the model can *rethink* its internal cognitive process with an internal confidence score as a guide. Akin of slow thinking mechanism.
 So this is the simple explanation of how it works:
