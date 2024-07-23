@@ -17,8 +17,9 @@ class TransformerBlock(nn.Module):
             GeGLU(embed_size),
         )
         self.rotary_emb = RotaryPositionalEmbedding(self.head_dim)
+        self.cache = None
         
-    def forward(self, x):
+    def forward(self, x, use_cache=False):
         b, n, _ = x.shape
         q = k = v = x
         
@@ -29,6 +30,15 @@ class TransformerBlock(nn.Module):
         
         pos_emb = self.rotary_emb(q)
         q, k = apply_rotary_pos_emb(q, k, pos_emb)
+        
+        if use_cache and self.cache is not None:
+            k = torch.cat([self.cache[0], k], dim=2)
+            v = torch.cat([self.cache[1], v], dim=2)
+        
+        if use_cache:
+            self.cache = (k, v)
+        else:
+            self.cache = None
         
         # Reshape back to original shape
         q = q.transpose(1, 2).contiguous().view(b, n, self.embed_size)
@@ -52,11 +62,11 @@ class TransformerModel(nn.Module):
         self.confidence_fc = nn.Linear(embed_size, 1)  # Confidence prediction layer
         self.context_size = context_size
 
-    def forward(self, x, num_iterations=1):
+    def forward(self, x, num_iterations=1, use_cache=False):
         x = self.embedding(x)
         for _ in range(num_iterations):
             for layer in self.layers:
-                x = layer(x)
+                x = layer(x, use_cache=use_cache)
         output = self.fc(x)
         confidence = torch.sigmoid(self.confidence_fc(x.mean(dim=1)))  # Sigmoid for confidence score
         return output, confidence

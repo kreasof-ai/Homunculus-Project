@@ -50,7 +50,7 @@ for epoch in range(NUM_EPOCHS):
     target = target[:, 1:].contiguous().view(-1)
 
     num_iterations = BASE_ITERATIONS
-    output, confidence = model(example_input[:, :-1], num_iterations=num_iterations)
+    output, confidence = model(example_input[:, :-1], num_iterations=num_iterations, use_cache=False)
     loss = criterion(output.view(-1, VOCAB_SIZE), target)
     confidence_target = 1 - (loss.item() / LOSS_THRESHOLD)
     confidence_target = torch.tensor([[confidence_target]], dtype=torch.float)
@@ -58,7 +58,7 @@ for epoch in range(NUM_EPOCHS):
 
     while confidence.mean().item() < CONFIDENCE_THRESHOLD and num_iterations < MAX_ITERATIONS:
         num_iterations += 1
-        output, confidence = model(example_input[:, :-1], num_iterations=num_iterations)
+        output, confidence = model(example_input[:, :-1], num_iterations=num_iterations, use_cache=False)
         loss = criterion(output.view(-1, VOCAB_SIZE), target)
         confidence_target = 1 - (loss.item() / LOSS_THRESHOLD)
         confidence_target = torch.tensor([[confidence_target]], dtype=torch.float)
