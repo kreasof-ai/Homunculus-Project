@@ -7,4 +7,4 @@ So this is the simple explanation of how it works:
 - If the loss value is high, this iteration is triggered, with max iterations set to 10.
 - We train an independent layer to output a confidence score, trained by loss value from the main training process.
 - When inference, both the next token and confidence scores are outputted and can determine how many iterations are needed for the current inference.
-- No sophisticated tokenization or attention layer, just a pure simple transformer for learning purpose.
+- ~~No sophisticated tokenization or attention layer, just a pure simple transformer for learning purpose.~~ I'm adding BPE and RoPE.
