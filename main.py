@@ -72,12 +72,14 @@ class TransformerModel(nn.Module):
         
         return text_tensor
 
-    def forward(self, x, imgs=None, num_iterations=1, use_cache=False):
+    def forward(self, x, imgs=None, num_iterations=1, use_cache=False, middle_training=False):
         img_seqs = []
+        vit_loss = 0
         if imgs is not None:
             for img in imgs:
-                img_embedding = self.vit(img, use_cache=use_cache)
+                img_embedding, loss = self.vit(img, use_cache=use_cache, middle_training=middle_training)
                 img_seqs.append(img_embedding)
+                vit_loss += loss
 
         x = self.embedding(x)
         
@@ -95,4 +97,7 @@ class TransformerModel(nn.Module):
                     caches[i].append(cache)
         output = self.fc(x)
         confidence = torch.sigmoid(self.confidence_fc(x.mean(dim=1)))  # Sigmoid for confidence score
-        return output, confidence
+        if middle_training:
+            return output, confidence, vit_loss
+        else:
+            return output, confidence

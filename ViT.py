@@ -19,7 +19,7 @@ class VisionTransformer(nn.Module):
         ])
         self.norm = nn.LayerNorm(embed_size)
 
-    def forward(self, x, use_cache=False):
+    def forward(self, x, use_cache=False, middle_training=False, mask_ratio=0.2):
         b, c, h, w = x.shape
         x = self.patch_embedding(x)  # (B, embed_size, H/patch_size, W/patch_size)
         x = x.flatten(2).transpose(1, 2)  # (B, num_patches, embed_size)
@@ -31,7 +31,25 @@ class VisionTransformer(nn.Module):
         q, k = apply_rotary_pos_emb_2d(q, k, pos_emb)
         x = q.view(b, self.num_patches, -1)
 
+        if middle_training:
+            mask = torch.randn(b, self.num_patches).bernoulli(p=1 - mask_ratio).unsqueeze(-1).expand(x.size())
+            if mask.device != x.device:
+                mask = mask.to(x.device)
+            masked_x = x * mask
+        else:
+            masked_x = x
+
         for layer in self.layers:
-            x = layer(x, use_cache=use_cache)
-        x = self.norm(x)
-        return x
+            if use_cache:
+                masked_x = layer(masked_x, use_cache=use_cache)[0]
+            else:
+                masked_x = layer(masked_x)
+
+        if middle_training:
+            loss = F.mse_loss(masked_x[mask == 0], x[mask == 0])
+        else:
+            loss = 0
+
+        x = self.norm(masked_x)
+
+        return x, loss

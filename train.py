@@ -64,16 +64,16 @@ for epoch in range(NUM_EPOCHS):
     target = target[:, 1:].contiguous().view(-1)
 
     num_iterations = BASE_ITERATIONS
-    output, confidence = model(example_input[:, :-1], imgs=imgs, num_iterations=num_iterations, use_cache=True)
-    loss = criterion(output.view(-1, VOCAB_SIZE), target)
+    output, confidence, vit_loss = model(example_input[:, :-1], imgs=imgs, num_iterations=num_iterations, use_cache=True, middle_training=True)
+    loss = model.criterion(output.view(-1, VOCAB_SIZE), target) + vit_loss
     confidence_target = 1 - (loss.item() / LOSS_THRESHOLD)
     confidence_target = torch.tensor([[confidence_target]], dtype=torch.float)
     confidence_loss = confidence_criterion(confidence, confidence_target)
 
     while confidence.mean().item() < CONFIDENCE_THRESHOLD and num_iterations < MAX_ITERATIONS:
         num_iterations += 1
-        output, confidence = model(example_input[:, :-1], imgs=imgs, num_iterations=num_iterations, use_cache=True)
-        loss = criterion(output.view(-1, VOCAB_SIZE), target)
+        output, confidence, vit_loss = model(example_input[:, :-1], imgs=imgs, num_iterations=num_iterations, use_cache=True, middle_training=True)
+        loss = model.criterion(output.view(-1, VOCAB_SIZE), target) + vit_loss
         confidence_target = 1 - (loss.item() / LOSS_THRESHOLD)
         confidence_target = torch.tensor([[confidence_target]], dtype=torch.float)
         confidence_loss = confidence_criterion(confidence, confidence_target)
