@@ -1,4 +1,3 @@
-
 from tokenizers import Tokenizer, models, pre_tokenizers, trainers
 
 def train_bpe_tokenizer(files, vocab_size=32000):
