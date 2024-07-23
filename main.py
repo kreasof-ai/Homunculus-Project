@@ -120,6 +120,7 @@ NUM_EPOCHS = 50
 BASE_ITERATIONS = 1
 MAX_ITERATIONS = 10
 CONFIDENCE_THRESHOLD = 0.8
+LOSS_THRESHOLD = 2.0  # Loss value threshold for increasing iterations
 
 # Create the model
 model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE)
