@@ -60,13 +60,19 @@ class TransformerModel(nn.Module):
         self.context_size = context_size
         self.vit = VisionTransformer(img_size, patch_size, embed_size, num_heads, vit_layers)
 
-    def forward(self, x, img=None, num_iterations=1, use_cache=False):
-        if img is not None:
-            img_embedding = self.vit(img, use_cache=use_cache)
-            img_start_token = self.embedding(torch.tensor([self.vocab_size-2]).to(x.device))  # [img] token
-            img_end_token = self.embedding(torch.tensor([self.vocab_size-1]).to(x.device))    # [/img] token
-            img_seq = torch.cat((img_start_token.unsqueeze(0), img_embedding, img_end_token.unsqueeze(0)), dim=1)
-            x = torch.cat((x, img_seq), dim=1)
+    def forward(self, x, imgs=None, num_iterations=1, use_cache=False):
+        img_seqs = []
+        if imgs is not None:
+            for img in imgs:
+                img_embedding = self.vit(img, use_cache=use_cache)
+                img_start_token = self.embedding(torch.tensor([self.vocab_size-2]).to(x.device))  # [img] token
+                img_end_token = self.embedding(torch.tensor([self.vocab_size-1]).to(x.device))    # [/img] token
+                img_seq = torch.cat((img_start_token.unsqueeze(0), img_embedding, img_end_token.unsqueeze(0)), dim=1)
+                img_seqs.append(img_seq)
+        
+        if img_seqs:
+            img_seqs = torch.cat(img_seqs, dim=1)
+            x = torch.cat((x, img_seqs), dim=1)
         
         x = self.embedding(x)
         caches = [[] for _ in range(len(self.layers))]

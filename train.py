@@ -19,10 +19,12 @@ BASE_ITERATIONS = 1
 MAX_ITERATIONS = 10
 CONFIDENCE_THRESHOLD = 0.8
 LOSS_THRESHOLD = 2.0  # Loss value threshold for increasing iterations
+IMG_SIZE = 224
+PATCH_SIZE = 16
+VIT_LAYERS = 3
 
 # Create the model
-model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE)
-
+model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE, IMG_SIZE, PATCH_SIZE, VIT_LAYERS)
 
 # Load tokenizer
 tokenizer = Tokenizer.from_file("bpe_tokenizer_autoregressive.json")
@@ -55,14 +57,14 @@ for epoch in range(NUM_EPOCHS):
     example_input = torch.tensor(tokenizer.encode(text).ids).unsqueeze(0)[:, :CONTEXT_SIZE]
     target = example_input.clone().detach()
     
-    # Example image input (batch size 1, 3 channels, 224x224)
-    img = torch.randn(1, 3, 224, 224)
+    # Example image inputs (batch size 1, 3 channels, 224x224)
+    imgs = [torch.randn(1, 3, 224, 224), torch.randn(1, 3, 224, 224)]
 
     # Shift target for autoregressive training
     target = target[:, 1:].contiguous().view(-1)
 
     num_iterations = BASE_ITERATIONS
-    output, confidence = model(example_input[:, :-1], img=img, num_iterations=num_iterations, use_cache=True)
+    output, confidence = model(example_input[:, :-1], imgs=imgs, num_iterations=num_iterations, use_cache=True)
     loss = criterion(output.view(-1, VOCAB_SIZE), target)
     confidence_target = 1 - (loss.item() / LOSS_THRESHOLD)
     confidence_target = torch.tensor([[confidence_target]], dtype=torch.float)
@@ -70,7 +72,7 @@ for epoch in range(NUM_EPOCHS):
 
     while confidence.mean().item() < CONFIDENCE_THRESHOLD and num_iterations < MAX_ITERATIONS:
         num_iterations += 1
-        output, confidence = model(example_input[:, :-1], img=img, num_iterations=num_iterations, use_cache=True)
+        output, confidence = model(example_input[:, :-1], imgs=imgs, num_iterations=num_iterations, use_cache=True)
         loss = criterion(output.view(-1, VOCAB_SIZE), target)
         confidence_target = 1 - (loss.item() / LOSS_THRESHOLD)
         confidence_target = torch.tensor([[confidence_target]], dtype=torch.float)
