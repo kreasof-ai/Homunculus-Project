@@ -3,6 +3,7 @@
 By [Habibullah Akbar](https://chavyv.vercel.app)
 
 ![Internal latent loop (4)](https://github.com/user-attachments/assets/1756d087-8659-4709-bdad-532633c12a5f)
+(The image above is a bit misleading because Rotary Positional Encoding happens at each block, not only at the first gate)
 
 This is a simple implementation of the iterable Transformer model, where the model can *rethink* its internal cognitive process with an internal confidence score as a guide. Akin of slow thinking mechanism.
 So this is the simple explanation of how it works:
