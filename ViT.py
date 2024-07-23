@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from einops import rearrange
 from RoPE import RotaryPositionalEmbedding2D, apply_rotary_pos_emb_2d
 from main import TransformerBlock
 
