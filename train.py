@@ -53,7 +53,7 @@ for epoch in range(NUM_EPOCHS):
     optimizer.zero_grad()
 
     # Example input (batch size 1, context size 512)
-    text = "Your input text here."
+    text = "Your input text here with [IMG][/IMG] and [IMG][/IMG]."
     example_input = torch.tensor(tokenizer.encode(text).ids).unsqueeze(0)[:, :CONTEXT_SIZE]
     target = example_input.clone().detach()
     
