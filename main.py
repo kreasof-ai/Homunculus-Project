@@ -17,9 +17,8 @@ class TransformerBlock(nn.Module):
             GeGLU(embed_size),
         )
         self.rotary_emb = RotaryPositionalEmbedding(self.head_dim)
-        self.cache = None
         
-    def forward(self, x, use_cache=False):
+    def forward(self, x, cache=None):
         b, n, _ = x.shape
         q = k = v = x
         
@@ -31,14 +30,9 @@ class TransformerBlock(nn.Module):
         pos_emb = self.rotary_emb(q)
         q, k = apply_rotary_pos_emb(q, k, pos_emb)
         
-        if use_cache and self.cache is not None:
-            k = torch.cat([self.cache[0], k], dim=2)
-            v = torch.cat([self.cache[1], v], dim=2)
-        
-        if use_cache:
-            self.cache = (k, v)
-        else:
-            self.cache = None
+        if cache is not None:
+            k = torch.cat([cache[0], k], dim=2)
+            v = torch.cat([cache[1], v], dim=2)
         
         # Reshape back to original shape
         q = q.transpose(1, 2).contiguous().view(b, n, self.embed_size)
@@ -49,7 +43,8 @@ class TransformerBlock(nn.Module):
         x = self.norm1(x + attn_output)
         fc_output = self.fc(x)
         x = self.norm2(x + fc_output)
-        return x
+        
+        return x, (k, v)
 
 class TransformerModel(nn.Module):
     def __init__(self, vocab_size, embed_size, num_heads, num_layers, context_size):
@@ -64,9 +59,15 @@ class TransformerModel(nn.Module):
 
     def forward(self, x, num_iterations=1, use_cache=False):
         x = self.embedding(x)
+        caches = [[] for _ in range(len(self.layers))]
         for _ in range(num_iterations):
-            for layer in self.layers:
-                x = layer(x, use_cache=use_cache)
+            for i, layer in enumerate(self.layers):
+                if use_cache and caches[i]:
+                    x, cache = layer(x, cache=caches[i][-1])
+                else:
+                    x, cache = layer(x, cache=None)
+                if use_cache:
+                    caches[i].append(cache)
         output = self.fc(x)
         confidence = torch.sigmoid(self.confidence_fc(x.mean(dim=1)))  # Sigmoid for confidence score
         return output, confidence
