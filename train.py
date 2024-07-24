@@ -60,12 +60,15 @@ for epoch in range(NUM_EPOCHS):
     # Example image inputs (batch size 1, 3 channels, 224x224)
     imgs = [torch.randn(1, 3, 224, 224), torch.randn(1, 3, 224, 224)]
 
-    # Shift target for autoregressive training
+    # Shift target for autoregressive training while ignoring image token regions
     target = target[:, 1:].contiguous().view(-1)
+    mask = (target != tokenizer.token_to_id("[IMG]")) & (target != tokenizer.token_to_id("[/IMG]"))
+    target = target[mask]
 
     num_iterations = BASE_ITERATIONS
     output, confidence, vit_loss = model(example_input[:, :-1], imgs=imgs, num_iterations=num_iterations, use_cache=True, middle_training=True)
-    loss = model.criterion(output.view(-1, VOCAB_SIZE), target) + vit_loss
+    output = output.view(-1, VOCAB_SIZE)[mask]
+    loss = model.criterion(output, target) + vit_loss
     confidence_target = 1 - (loss.item() / LOSS_THRESHOLD)
     confidence_target = torch.tensor([[confidence_target]], dtype=torch.float)
     confidence_loss = confidence_criterion(confidence, confidence_target)
@@ -73,7 +76,8 @@ for epoch in range(NUM_EPOCHS):
     while confidence.mean().item() < CONFIDENCE_THRESHOLD and num_iterations < MAX_ITERATIONS:
         num_iterations += 1
         output, confidence, vit_loss = model(example_input[:, :-1], imgs=imgs, num_iterations=num_iterations, use_cache=True, middle_training=True)
-        loss = model.criterion(output.view(-1, VOCAB_SIZE), target) + vit_loss
+        output = output.view(-1, VOCAB_SIZE)[mask]
+        loss = model.criterion(output, target) + vit_loss
         confidence_target = 1 - (loss.item() / LOSS_THRESHOLD)
         confidence_target = torch.tensor([[confidence_target]], dtype=torch.float)
         confidence_loss = confidence_criterion(confidence, confidence_target)

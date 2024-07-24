@@ -101,3 +101,32 @@ class TransformerModel(nn.Module):
             return output, confidence, vit_loss
         else:
             return output, confidence
+
+    def generate(self, input_text, tokenizer, max_length=512, imgs=None, num_iterations=1, use_cache=False):
+        tokens = tokenizer.encode(input_text).ids
+        input_tensor = torch.tensor(tokens).unsqueeze(0)
+        img_seqs = []
+        if imgs is not None:
+            for img in imgs:
+                img_embedding, loss = self.vit(img, use_cache=use_cache)
+                img_seqs.append(img_embedding)
+        
+        generated_tokens = input_tensor.clone()
+        
+        if img_seqs:
+            generated_tokens = self.insert_image_embeddings(generated_tokens, img_seqs)
+        
+        for _ in range(max_length - len(tokens)):
+            output, confidence = self.forward(generated_tokens, num_iterations=num_iterations, use_cache=use_cache)
+            next_token_logits = output[0, -1, :]
+            next_token = torch.argmax(next_token_logits, dim=-1).unsqueeze(0)
+            
+            if next_token.item() in {self.img_token_id, self.end_img_token_id}:
+                # Skip generating tokens for [IMG] and [/IMG]
+                continue
+            
+            generated_tokens = torch.cat((generated_tokens, next_token.unsqueeze(0)), dim=1)
+            if next_token.item() == tokenizer.token_to_id("[SEP]"):
+                break
+        
+        return tokenizer.decode(generated_tokens.squeeze().tolist())
