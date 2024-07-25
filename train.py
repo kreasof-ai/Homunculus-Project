@@ -23,6 +23,7 @@ LOSS_THRESHOLD = 2.0  # Loss value threshold for increasing iterations
 IMG_SIZE = 224
 PATCH_SIZE = 16
 VIT_LAYERS = 3
+NUM_GROUPS = 4  # Number of groups for Grouped Query Attention
 
 # Load tokenizer
 tokenizer = Tokenizer.from_file("bpe_tokenizer_autoregressive.json")
@@ -82,7 +83,7 @@ class TransformerLightningModule(pl.LightningModule):
         return optimizer
 
 # Create the model
-model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE, IMG_SIZE, PATCH_SIZE, VIT_LAYERS)
+model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE, IMG_SIZE, PATCH_SIZE, VIT_LAYERS, NUM_GROUPS)
 
 # Load model weights before training
 load_model_weights(model, "model_weights.safetensors")

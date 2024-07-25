@@ -4,14 +4,15 @@ import torch.nn as nn
 from RoPE import RotaryPositionalEmbedding, apply_rotary_pos_emb
 from activation import GeGLU
 from ViT import VisionTransformer
+from GQA import GroupedQueryAttention
 
 class TransformerBlock(nn.Module):
-    def __init__(self, embed_size, num_heads):
+    def __init__(self, embed_size, num_heads, num_groups):
         super(TransformerBlock, self).__init__()
         self.embed_size = embed_size
         self.num_heads = num_heads
         self.head_dim = embed_size // num_heads
-        self.attention = nn.MultiheadAttention(embed_size, num_heads)
+        self.attention = GroupedQueryAttention(embed_size, num_heads, num_groups)
         self.norm1 = nn.LayerNorm(embed_size)
         self.norm2 = nn.LayerNorm(embed_size)
         self.fc = nn.Sequential(
@@ -48,16 +49,16 @@ class TransformerBlock(nn.Module):
         return x, (k, v)
 
 class TransformerModel(nn.Module):
-    def __init__(self, vocab_size, embed_size, num_heads, num_layers, context_size, img_size, patch_size, vit_layers):
+    def __init__(self, vocab_size, embed_size, num_heads, num_layers, context_size, img_size, patch_size, vit_layers, num_groups):
         super(TransformerModel, self).__init__()
         self.embedding = nn.Embedding(vocab_size, embed_size)
         self.layers = nn.ModuleList([
-            TransformerBlock(embed_size, num_heads) for _ in range(num_layers)
+            TransformerBlock(embed_size, num_heads, num_groups) for _ in range(num_layers)
         ])
         self.fc = nn.Linear(embed_size, vocab_size)
         self.confidence_fc = nn.Linear(embed_size, 1)  # Confidence prediction layer
         self.context_size = context_size
-        self.vit = VisionTransformer(img_size, patch_size, embed_size, num_heads, vit_layers)
+        self.vit = VisionTransformer(img_size, patch_size, embed_size, num_heads, vit_layers, num_groups)
         self.img_token_id = self.embedding.num_embeddings - 2
         self.end_img_token_id = self.embedding.num_embeddings - 1
 

@@ -6,7 +6,7 @@ from RoPE import RotaryPositionalEmbedding2D, apply_rotary_pos_emb_2d
 from main import TransformerBlock
 
 class VisionTransformer(nn.Module):
-    def __init__(self, img_size, patch_size, embed_size, num_heads, num_layers):
+    def __init__(self, img_size, patch_size, embed_size, num_heads, num_layers, num_groups):
         super(VisionTransformer, self).__init__()
         self.embed_size = embed_size
         self.num_heads = num_heads
@@ -15,7 +15,7 @@ class VisionTransformer(nn.Module):
         self.patch_embedding = nn.Conv2d(3, embed_size, kernel_size=patch_size, stride=patch_size)
         self.pos_embedding = RotaryPositionalEmbedding2D(embed_size // num_heads)
         self.layers = nn.ModuleList([
-            TransformerBlock(embed_size, num_heads) for _ in range(num_layers)
+            TransformerBlock(embed_size, num_heads, num_groups) for _ in range(num_layers)
         ])
         self.norm = nn.LayerNorm(embed_size)
 
