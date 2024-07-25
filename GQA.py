@@ -9,7 +9,6 @@ class GroupedQueryAttention(nn.Module):
         self.num_heads = num_heads
         self.num_groups = num_groups
         self.head_dim = embed_size // num_heads
-        self.group_dim = embed_size // num_groups
 
         self.query = nn.Linear(embed_size, embed_size)
         self.key = nn.Linear(embed_size, embed_size)
@@ -25,7 +24,7 @@ class GroupedQueryAttention(nn.Module):
         v = self.value(v).view(b, n, self.num_heads, self.head_dim).transpose(1, 2)
 
         # Group queries
-        q = q.view(b, self.num_heads, self.num_groups, -1, self.head_dim).mean(dim=3)
+        q = q.view(b, self.num_heads, n // self.num_groups, self.num_groups, self.head_dim).mean(dim=3)
 
         # Compute attention scores
         scores = torch.einsum('bhqd,bhkd->bhqk', q, k) / (self.head_dim ** 0.5)
