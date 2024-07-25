@@ -1,3 +1,4 @@
 torch
 tokenizer
 safetensors
+pytorch-lightning
