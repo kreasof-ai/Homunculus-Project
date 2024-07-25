@@ -1,4 +1,4 @@
 torch
-tokenizer
+tokenizers
 safetensors
 pytorch-lightning
