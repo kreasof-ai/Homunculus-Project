@@ -29,3 +29,4 @@ Soon:
 - Diffusion Transformer (DiT) integration for image detokenization.
 - Speech generation integration.
 - Influential token extraction.
+- [Discrete Latent Representation](https://arxiv.org/abs/2312.01203)
