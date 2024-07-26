@@ -2,7 +2,7 @@
 (Multiple internal inference loop transformer model)
 By [Habibullah Akbar](https://chavyv.vercel.app)
 
-![Internal latent loop (7)](https://github.com/user-attachments/assets/5e176ad9-7004-4864-8009-3c8925f4702d)
+![Internal latent loop (8)](https://github.com/user-attachments/assets/04b7fb58-bf45-4143-9be8-4b517f0a38c7)
 
 This is a ~~simple~~ implementation of the iterable Transformer model, where the model can *rethink* its internal cognitive process with an internal confidence score as a guide. Akin of slow thinking mechanism.
 So this is the simple explanation of how it works:
