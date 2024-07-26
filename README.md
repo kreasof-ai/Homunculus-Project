@@ -12,4 +12,4 @@ So this is the simple explanation of how it works:
 - When inference, both the next token and confidence scores are outputted and can determine how many iterations are needed for the current inference.
 - ~~No sophisticated tokenization or attention layer, just a pure simple transformer for learning purposes.~~ I'm adding GeGLU activation function, BPE tokenizer, selective 1D & 2D RoPE, safetensors, custom KV-caching, a simple vision encoder, grouped-query attention (GQA), RMS Norm, and PyTorch Lightning.
 
-> Notes: I dunno why I'm impulsively adding unnecessary parts like ViT 🙃
+> Notes: ~~I dunno why I'm impulsively adding unnecessary parts like ViT 🙃~~ I decided to put all of my ideas into this project, so this is probably not a simple learning project anymore 😅
