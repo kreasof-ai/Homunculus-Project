@@ -92,11 +92,9 @@ class TransformerModel(nn.Module):
         for _ in range(num_iterations):
             for i, layer in enumerate(self.layers):
                 if use_cache and caches[i]:
-                    x, cache = layer(x, cache=caches[i][-1])
+                    x, caches[i] = layer(x, cache=caches[i][-1])
                 else:
                     x, cache = layer(x, cache=None)
-                if use_cache:
-                    caches[i].append(cache)
         output = self.fc(x)
         confidence = torch.sigmoid(self.confidence_fc(x.mean(dim=1)))  # Sigmoid for confidence score
         if middle_training:

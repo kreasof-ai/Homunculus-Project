@@ -4,7 +4,51 @@ import torch.nn.functional as F
 
 from RoPE import RotaryPositionalEmbedding2D, apply_rotary_pos_emb_2d
 from main import TransformerBlock
+from activation import GeGLU
+from GQA import GroupedQueryAttention
 from RMSNorm import RMSNorm  # Import the RMSNorm layer
+
+class ViTBlock(nn.Module):
+    def __init__(self, embed_size, num_heads, num_groups):
+        super(TransformerBlock, self).__init__()
+        self.embed_size = embed_size
+        self.num_heads = num_heads
+        self.head_dim = embed_size // num_heads
+        self.attention = GroupedQueryAttention(embed_size, num_heads, num_groups)
+        self.norm1 = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
+        self.norm2 = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
+        self.fc = nn.Sequential(
+            GeGLU(embed_size),
+        )
+        self.rotary_emb = RotaryPositionalEmbedding2D(self.head_dim)
+        
+    def forward(self, x, cache=None):
+        b, n, _ = x.shape
+        q = k = v = x
+        
+        # Split into heads and apply RoPE
+        q = q.view(b, n, self.num_heads, self.head_dim).transpose(1, 2)
+        k = k.view(b, n, self.num_heads, self.head_dim).transpose(1, 2)
+        v = v.view(b, n, self.num_heads, self.head_dim).transpose(1, 2)
+        
+        pos_emb = self.rotary_emb(q)
+        q, k = apply_rotary_pos_emb_2d(q, k, pos_emb)
+        
+        if cache is not None:
+            k = torch.cat([cache[0], k], dim=2)
+            v = torch.cat([cache[1], v], dim=2)
+        
+        # Reshape back to original shape
+        q = q.transpose(1, 2).contiguous().view(b, n, self.embed_size)
+        k = k.transpose(1, 2).contiguous().view(b, n, self.embed_size)
+        v = v.transpose(1, 2).contiguous().view(b, n, self.embed_size)
+        
+        attn_output, _ = self.attention(q, k, v)
+        x = self.norm1(x + attn_output)
+        fc_output = self.fc(x)
+        x = self.norm2(x + fc_output)
+        
+        return x, (k, v)
 
 class VisionTransformer(nn.Module):
     def __init__(self, img_size, patch_size, embed_size, num_heads, num_layers, num_groups):
@@ -14,9 +58,8 @@ class VisionTransformer(nn.Module):
         self.patch_size = patch_size
         self.num_patches = (img_size // patch_size) ** 2
         self.patch_embedding = nn.Conv2d(3, embed_size, kernel_size=patch_size, stride=patch_size)
-        self.pos_embedding = RotaryPositionalEmbedding2D(embed_size // num_heads)
         self.layers = nn.ModuleList([
-            TransformerBlock(embed_size, num_heads, num_groups) for _ in range(num_layers)
+            ViTBlock(embed_size, num_heads, num_groups) for _ in range(num_layers)
         ])
         self.norm = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
 
@@ -24,13 +67,6 @@ class VisionTransformer(nn.Module):
         b, c, h, w = x.shape
         x = self.patch_embedding(x)  # (B, embed_size, H/patch_size, W/patch_size)
         x = x.flatten(2).transpose(1, 2)  # (B, num_patches, embed_size)
-
-        # Apply 2D rotary positional embedding
-        pos_emb = self.pos_embedding(h // self.patch_size, w // self.patch_size)
-        pos_emb = pos_emb.flatten(1, 2).unsqueeze(0).expand(b, -1, -1)
-        q = k = v = x.view(b, self.num_patches, -1, self.embed_size // self.num_heads).transpose(1, 2)
-        q, k = apply_rotary_pos_emb_2d(q, k, pos_emb)
-        x = q.view(b, self.num_patches, -1)
 
         if middle_training:
             mask = torch.randn(b, self.num_patches).bernoulli(p=1 - mask_ratio).unsqueeze(-1).expand(x.size())
@@ -40,11 +76,14 @@ class VisionTransformer(nn.Module):
         else:
             masked_x = x
 
-        for layer in self.layers:
+        # Initialize cache for storing key-value pairs
+        cache = [(None, None) for _ in range(len(self.layers))]
+
+        for i, layer in enumerate(self.layers):
             if use_cache:
-                masked_x = layer(masked_x, use_cache=use_cache)[0]
+                masked_x, cache[i] = layer(masked_x, cache=cache[i])
             else:
-                masked_x = layer(masked_x)
+                masked_x, _ = layer(masked_x)
 
         if middle_training:
             loss = F.mse_loss(masked_x[mask == 0], x[mask == 0])
