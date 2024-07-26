@@ -8,7 +8,7 @@ Key features:
 - Grouped Query Attention.
 - PyTorch Lightning implementation.
 
-![Internal latent loop (8)](https://github.com/user-attachments/assets/04b7fb58-bf45-4143-9be8-4b517f0a38c7)
+![Internal latent loop (9)](https://github.com/user-attachments/assets/fe74e8b8-2f74-4b20-9f36-6f61c6946f2a)
 
 The iterable Transformer model, where the model can *rethink* its internal cognitive process with an internal confidence score as a guide. Akin of slow thinking mechanism.
 So this is the simple explanation of how it works:
