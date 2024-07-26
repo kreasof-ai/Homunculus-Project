@@ -6,6 +6,7 @@ from activation import GeGLU
 from ViT import VisionTransformer
 from GQA import GroupedQueryAttention
 from RMSNorm import RMSNorm
+from MLP import MLP
 
 class TransformerBlock(nn.Module):
     def __init__(self, embed_size, num_heads, num_groups):
@@ -64,7 +65,7 @@ class TransformerModel(nn.Module):
             TransformerBlock(embed_size, num_heads, num_groups) for _ in range(num_layers)
         ])
         self.fc = nn.Linear(embed_size, vocab_size)
-        self.confidence_fc = nn.Linear(embed_size, 1)  # Confidence prediction layer
+        self.confidence_fc = MLP(embed_size, embed_size // 2, 1, 3)  # Confidence prediction layer
         self.context_size = context_size
         self.vit = VisionTransformer(img_size, patch_size, embed_size, num_heads, vit_layers, num_groups)
         self.img_token_id = self.embedding.num_embeddings - 2
