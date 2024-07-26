@@ -9,21 +9,21 @@ from main import TransformerModel
 from tokenizers import Tokenizer, processors
 
 # Define the constants
-VOCAB_SIZE = 32000
-EMBED_SIZE = 768
-NUM_HEADS = 12
-NUM_LAYERS = 6
-CONTEXT_SIZE = 512
-LEARNING_RATE = 0.001
-NUM_EPOCHS = 50
+VOCAB_SIZE = 128000
+EMBED_SIZE = 8192
+NUM_HEADS =  64
+NUM_LAYERS = 80
+CONTEXT_SIZE = 128000
+LEARNING_RATE = 1.5e-4
+NUM_EPOCHS = 10e5
 BASE_ITERATIONS = 1
 MAX_ITERATIONS = 10
 CONFIDENCE_THRESHOLD = 0.8
 LOSS_THRESHOLD = 2.0  # Loss value threshold for increasing iterations
-IMG_SIZE = 224
+IMG_SIZE = 1024
 PATCH_SIZE = 16
-VIT_LAYERS = 3
-NUM_GROUPS = 4  # Number of groups for Grouped Query Attention
+VIT_LAYERS = 16
+NUM_GROUPS = 8  # Number of groups for Grouped Query Attention
 
 # Load tokenizer
 tokenizer = Tokenizer.from_file("bpe_tokenizer_autoregressive.json")

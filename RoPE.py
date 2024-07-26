@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 class RotaryPositionalEmbedding(nn.Module):
-    def __init__(self, dim, base=10000):
+    def __init__(self, dim, base=500000):
         super().__init__()
         self.dim = dim
         self.base = base
@@ -24,7 +24,7 @@ def apply_rotary_pos_emb(q, k, pos_emb):
     return q_rot, k_rot
 
 class RotaryPositionalEmbedding2D(nn.Module):
-    def __init__(self, dim, base=10000):
+    def __init__(self, dim, base=500000):
         super().__init__()
         self.dim = dim
         self.base = base
