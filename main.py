@@ -5,6 +5,7 @@ from RoPE import RotaryPositionalEmbedding, apply_rotary_pos_emb
 from activation import GeGLU
 from ViT import VisionTransformer
 from GQA import GroupedQueryAttention
+from RMSNorm import RMSNorm
 
 class TransformerBlock(nn.Module):
     def __init__(self, embed_size, num_heads, num_groups):
@@ -13,8 +14,8 @@ class TransformerBlock(nn.Module):
         self.num_heads = num_heads
         self.head_dim = embed_size // num_heads
         self.attention = GroupedQueryAttention(embed_size, num_heads, num_groups)
-        self.norm1 = nn.LayerNorm(embed_size)
-        self.norm2 = nn.LayerNorm(embed_size)
+        self.norm1 = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
+        self.norm2 = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
         self.fc = nn.Sequential(
             GeGLU(embed_size),
         )

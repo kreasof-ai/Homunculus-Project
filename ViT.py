@@ -4,6 +4,7 @@ import torch.nn.functional as F
 
 from RoPE import RotaryPositionalEmbedding2D, apply_rotary_pos_emb_2d
 from main import TransformerBlock
+from RMSNorm import RMSNorm  # Import the RMSNorm layer
 
 class VisionTransformer(nn.Module):
     def __init__(self, img_size, patch_size, embed_size, num_heads, num_layers, num_groups):
@@ -17,7 +18,7 @@ class VisionTransformer(nn.Module):
         self.layers = nn.ModuleList([
             TransformerBlock(embed_size, num_heads, num_groups) for _ in range(num_layers)
         ])
-        self.norm = nn.LayerNorm(embed_size)
+        self.norm = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
 
     def forward(self, x, use_cache=False, middle_training=False, mask_ratio=0.2):
         b, c, h, w = x.shape
