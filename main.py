@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from RoPE import RotaryPositionalEmbedding, apply_rotary_pos_emb
+from RoPE import RotaryPositionalEmbedding, apply_rotary_pos_emb, apply_rotary_pos_emb_2d, RotaryPositionalEmbedding2D
 from activation import GeGLU
 from ViT import VisionTransformer
 from GQA import GroupedQueryAttention
@@ -20,18 +20,25 @@ class TransformerBlock(nn.Module):
             GeGLU(embed_size),
         )
         self.rotary_emb = RotaryPositionalEmbedding(self.head_dim)
+        self.rotary_emb_2d = RotaryPositionalEmbedding2D(self.head_dim)
         
-    def forward(self, x, cache=None):
+    def forward(self, x, cache=None, img_pos=[], end_img_pos=[]):
         b, n, _ = x.shape
         q = k = v = x
         
-        # Split into heads and apply RoPE
+        # Split into heads
         q = q.view(b, n, self.num_heads, self.head_dim).transpose(1, 2)
         k = k.view(b, n, self.num_heads, self.head_dim).transpose(1, 2)
         v = v.view(b, n, self.num_heads, self.head_dim).transpose(1, 2)
         
+        # Apply 1D RoPE by default
         pos_emb = self.rotary_emb(q)
         q, k = apply_rotary_pos_emb(q, k, pos_emb)
+        
+        # Apply 2D RoPE for image tokens
+        for start, end in zip(img_pos, end_img_pos):
+            pos_emb_2d = self.rotary_emb_2d(q[:, :, start:end])
+            q[:, :, start:end], k[:, :, start:end] = apply_rotary_pos_emb_2d(q[:, :, start:end], k[:, :, start:end], pos_emb_2d)
         
         if cache is not None:
             k = torch.cat([cache[0], k], dim=2)
@@ -72,7 +79,7 @@ class TransformerModel(nn.Module):
         for start, end, img_emb in zip(img_pos[0], end_img_pos[0], img_embeddings):
             text_tensor = torch.cat((text_tensor[:start+1], img_emb, text_tensor[end:]), dim=1)
         
-        return text_tensor
+        return text_tensor, img_pos[0], end_img_pos[0]
 
     def forward(self, x, imgs=None, num_iterations=1, use_cache=False, middle_training=False):
         img_seqs = []
@@ -85,16 +92,17 @@ class TransformerModel(nn.Module):
 
         x = self.embedding(x)
         
+        img_pos, end_img_pos = [], []
         if img_seqs:
-            x = self.insert_image_embeddings(x, img_seqs)
+            x, img_pos, end_img_pos = self.insert_image_embeddings(x, img_seqs)
 
         caches = [[] for _ in range(len(self.layers))]
         for _ in range(num_iterations):
             for i, layer in enumerate(self.layers):
                 if use_cache and caches[i]:
-                    x, caches[i] = layer(x, cache=caches[i][-1])
+                    x, caches[i] = layer(x, cache=caches[i][-1], img_pos=img_pos, end_img_pos=end_img_pos)
                 else:
-                    x, cache = layer(x, cache=None)
+                    x, cache = layer(x, cache=None, img_pos=img_pos, end_img_pos=end_img_pos)
         output = self.fc(x)
         confidence = torch.sigmoid(self.confidence_fc(x.mean(dim=1)))  # Sigmoid for confidence score
         if middle_training:
@@ -114,7 +122,7 @@ class TransformerModel(nn.Module):
         generated_tokens = input_tensor.clone()
         
         if img_seqs:
-            generated_tokens = self.insert_image_embeddings(generated_tokens, img_seqs)
+            generated_tokens, img_pos, end_img_pos = self.insert_image_embeddings(generated_tokens, img_seqs)
         
         for _ in range(max_length - len(tokens)):
             output, confidence = self.forward(generated_tokens, num_iterations=num_iterations, use_cache=use_cache)
