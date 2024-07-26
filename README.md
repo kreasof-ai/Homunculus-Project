@@ -2,7 +2,7 @@
 (Multiple internal inference loop transformer model)
 By [Habibullah Akbar](https://chavyv.vercel.app)
 
-![Internal latent loop (6)](https://github.com/user-attachments/assets/d8cd5309-aeff-48ca-91fc-5a195ae409ae)
+![Internal latent loop (7)](https://github.com/user-attachments/assets/5e176ad9-7004-4864-8009-3c8925f4702d)
 > (The image above is a bit misleading because Rotary Positional Encoding happens at each block, not only at the first gate)
 
 This is a simple implementation of the iterable Transformer model, where the model can *rethink* its internal cognitive process with an internal confidence score as a guide. Akin of slow thinking mechanism.
