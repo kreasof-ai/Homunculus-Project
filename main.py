@@ -122,7 +122,7 @@ class TransformerModel(nn.Module):
         else:
             return output, confidence
 
-    def generate(self, input_text, tokenizer, max_length=512, imgs=None, num_iterations=1, use_cache=False, beam_size=5):
+    def generate(self, input_text, tokenizer, max_length=128000, imgs=None, num_iterations=1, use_cache=False, beam_size=5):
         tokens = tokenizer.encode(input_text).ids
         input_tensor = torch.tensor(tokens).unsqueeze(0)
         
