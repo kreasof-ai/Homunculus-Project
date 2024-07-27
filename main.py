@@ -17,6 +17,20 @@ This is the main code containing the main Transformer backbone. Containing few m
 """
 
 class TransformerBlock(nn.Module):
+    def __init__(self, embed_size, num_heads, num_groups):
+        super(TransformerBlock, self).__init__()
+        self.embed_size = embed_size
+        self.num_heads = num_heads
+        self.head_dim = embed_size // num_heads
+        self.attention = GroupedQueryAttention(embed_size, num_heads, num_groups)
+        self.norm1 = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
+        self.norm2 = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
+        self.fc = nn.Sequential(
+            GeGLU(embed_size),
+        )
+        self.rotary_emb = RotaryPositionalEmbedding(self.head_dim)
+        self.rotary_emb_2d = RotaryPositionalEmbedding2D(self.head_dim)
+        
     def forward(self, x, cache=None, img_pos=[], end_img_pos=[]):
         b, n, _ = x.shape
         q = k = v = x.view(b, n, self.num_heads, self.head_dim).transpose(1, 2)
@@ -79,7 +93,7 @@ class TransformerModel(nn.Module):
     def forward(self, x, imgs=None, num_iterations=1, use_cache=False, middle_training=False):
         # middle_training: If True, use fill-in-the-middle objective for image training
         # If False, use standard next-token prediction for text
-        
+
         img_seqs = []
         vit_loss = 0
         if imgs is not None:
