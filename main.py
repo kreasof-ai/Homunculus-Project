@@ -71,6 +71,7 @@ class TransformerModel(nn.Module):
         self.fc = nn.Linear(embed_size, vocab_size)
         self.confidence_fc = MLP(embed_size, embed_size // 2, 1, 3)  # Confidence prediction layer
         self.context_size = context_size
+        self.softmax = nn.Softmax(dim=-1)
         self.vit = VisionTransformer(img_size, patch_size, embed_size, num_heads, vit_layers, num_groups)
         self.img_token_id = self.embedding.num_embeddings - 2
         self.end_img_token_id = self.embedding.num_embeddings - 1
@@ -116,6 +117,7 @@ class TransformerModel(nn.Module):
                 else:
                     x, cache = layer(x, cache=None, img_pos=img_pos, end_img_pos=end_img_pos)
         output = self.fc(x)
+        output = self.softmax(output)  # Apply softmax to the output logits
         confidence = torch.sigmoid(self.confidence_fc(x.mean(dim=1)))  # Sigmoid for confidence score
         if middle_training:
             return output, confidence, vit_loss
@@ -143,6 +145,7 @@ class TransformerModel(nn.Module):
             all_candidates = []
             for beam, score in beams:
                 output, _ = self.forward(beam, num_iterations=num_iterations, use_cache=use_cache)
+                output = self.softmax(output)  # Apply softmax to the output logits
                 next_token_logits = output[0, -1, :]
                 top_k_logits, top_k_indices = torch.topk(next_token_logits, beam_size)
                 
