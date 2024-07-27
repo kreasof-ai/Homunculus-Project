@@ -25,6 +25,7 @@ IMG_SIZE = 1024
 PATCH_SIZE = 16
 VIT_LAYERS = 16
 NUM_GROUPS = 8  # Number of groups for Grouped Query Attention
+USE_FLASH_ATTENTION = False  # Set this to True to use Flash Attention
 
 """
 This is the main code for training and define the parameter. Consist of:
@@ -112,7 +113,7 @@ class TransformerLightningModule(pl.LightningModule):
         return optimizer
 
 # Create the model
-model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE, IMG_SIZE, PATCH_SIZE, VIT_LAYERS, NUM_GROUPS)
+model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE, IMG_SIZE, PATCH_SIZE, VIT_LAYERS, NUM_GROUPS, USE_FLASH_ATTENTION)
 
 # Load model weights before training
 load_model_weights(model, "model_weights.safetensors")

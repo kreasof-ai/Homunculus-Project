@@ -7,3 +7,4 @@ peft
 torchvision
 bitsandbytes
 bitnet
+flash-attn

@@ -57,6 +57,7 @@ PATCH_SIZE = 16
 VIT_LAYERS = 16
 NUM_GROUPS = 8  # Number of groups for Grouped Query Attention
 BATCH_SIZE = 4
+USE_FLASH_ATTENTION = False  # Set this to True to use Flash Attention
 
 """
 This is the scripts for BitNet LoRA finetuning.
@@ -147,7 +148,7 @@ class BitNetLightningModule(pl.LightningModule):
 # Main training function
 def train_model():
     # Create the base model
-    base_model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE, IMG_SIZE, PATCH_SIZE, VIT_LAYERS, NUM_GROUPS)
+    base_model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE, IMG_SIZE, PATCH_SIZE, VIT_LAYERS, NUM_GROUPS, USE_FLASH_ATTENTION)
 
     # Load pre-trained weights
     load_model_weights(base_model, "model_weights.safetensors")
@@ -288,6 +289,7 @@ PATCH_SIZE = 16
 VIT_LAYERS = 16
 NUM_GROUPS = 8  # Number of groups for Grouped Query Attention
 BATCH_SIZE = 4
+USE_FLASH_ATTENTION = False  # Set this to True to use Flash Attention
 
 """
 This is the scripts for LoRA finetuning.
@@ -375,7 +377,7 @@ class TransformerLightningModule(pl.LightningModule):
 # Main training function
 def train_model():
     # Create the base model
-    base_model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE, IMG_SIZE, PATCH_SIZE, VIT_LAYERS, NUM_GROUPS)
+    base_model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE, IMG_SIZE, PATCH_SIZE, VIT_LAYERS, NUM_GROUPS, USE_FLASH_ATTENTION)
 
     # Load pre-trained weights
     load_model_weights(base_model, "model_weights.safetensors")
@@ -494,6 +496,56 @@ if __name__ == "__main__":
 
 ```
 
+## flashAttention.py
+
+```python
+# flashAttention.py
+
+import torch.nn as nn
+from flash_attn import flash_attn_func
+
+"""
+This is option for using both Grouped Query Attention and Flash Attention
+"""
+
+class FlashAttention(nn.Module):
+    def __init__(self, embed_size, num_heads, num_groups):
+        super(FlashAttention, self).__init__()
+        self.embed_size = embed_size
+        self.num_heads = num_heads
+        self.num_groups = num_groups
+        self.head_dim = embed_size // num_heads
+        
+        self.q_proj = nn.Linear(embed_size, embed_size)
+        self.k_proj = nn.Linear(embed_size, embed_size // (num_heads // num_groups))
+        self.v_proj = nn.Linear(embed_size, embed_size // (num_heads // num_groups))
+        self.out_proj = nn.Linear(embed_size, embed_size)
+
+    def forward(self, q, k, v):
+        b, n, _ = q.shape
+        
+        q = self.q_proj(q).view(b, n, self.num_heads, self.head_dim)
+        k = self.k_proj(k).view(b, n, self.num_groups, self.head_dim)
+        v = self.v_proj(v).view(b, n, self.num_groups, self.head_dim)
+        
+        # Repeat k and v to match the number of heads
+        k = k.repeat_interleave(self.num_heads // self.num_groups, dim=2)
+        v = v.repeat_interleave(self.num_heads // self.num_groups, dim=2)
+        
+        # Prepare inputs for flash_attn_func
+        q = q.transpose(1, 2)  # [b, nh, n, hd]
+        k = k.transpose(1, 2)  # [b, nh, n, hd]
+        v = v.transpose(1, 2)  # [b, nh, n, hd]
+
+        attn_output = flash_attn_func(q, k, v, softmax_scale=None)
+        
+        attn_output = attn_output.transpose(1, 2).contiguous().view(b, n, self.embed_size)
+        out = self.out_proj(attn_output)
+        
+        return out, None  # Return None for compatibility with existing implementation
+
+```
+
 ## format.py
 
 ```python
@@ -597,6 +649,7 @@ from ViT import VisionTransformer
 from GQA import GroupedQueryAttention
 from RMSNorm import RMSNorm
 from MLP import MLP
+from flashAttention import FlashAttention
 
 """
 This is the main code containing the main Transformer backbone. Containing few mechanism:
@@ -604,15 +657,19 @@ This is the main code containing the main Transformer backbone. Containing few m
 - Blend the image embedding sequence into the text embedding sequence.
 - Selective Rotary Positional Encoding. Given image embedding sequence, the RoPE is applied 2 dimensionally.
 - Custom KV-caching based on the number of internal iterations. Making sure every internal iterations have independent KV-cache.
+- Flash Attention option.
 """
 
 class TransformerBlock(nn.Module):
-    def __init__(self, embed_size, num_heads, num_groups):
+    def __init__(self, embed_size, num_heads, num_groups, use_flash_attention=False):
         super(TransformerBlock, self).__init__()
         self.embed_size = embed_size
         self.num_heads = num_heads
         self.head_dim = embed_size // num_heads
-        self.attention = GroupedQueryAttention(embed_size, num_heads, num_groups)
+        if use_flash_attention:
+            self.attention = FlashAttention(embed_size, num_heads, num_groups)
+        else:
+            self.attention = GroupedQueryAttention(embed_size, num_heads, num_groups)
         self.norm1 = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
         self.norm2 = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
         self.fc = nn.Sequential(
@@ -652,17 +709,17 @@ class TransformerBlock(nn.Module):
 
 
 class TransformerModel(nn.Module):
-    def __init__(self, vocab_size, embed_size, num_heads, num_layers, context_size, img_size, patch_size, vit_layers, num_groups):
+    def __init__(self, vocab_size, embed_size, num_heads, num_layers, context_size, img_size, patch_size, vit_layers, num_groups, use_flash_attention=False):
         super(TransformerModel, self).__init__()
         self.embedding = nn.Embedding(vocab_size, embed_size)
         self.layers = nn.ModuleList([
-            TransformerBlock(embed_size, num_heads, num_groups) for _ in range(num_layers)
+            TransformerBlock(embed_size, num_heads, num_groups, use_flash_attention) for _ in range(num_layers)
         ])
         self.fc = nn.Linear(embed_size, vocab_size)
         self.confidence_fc = MLP(embed_size, embed_size // 2, 1, 3)  # Confidence prediction layer
         self.context_size = context_size
         self.softmax = nn.Softmax(dim=-1)
-        self.vit = VisionTransformer(img_size, patch_size, embed_size, num_heads, vit_layers, num_groups)
+        self.vit = VisionTransformer(img_size, patch_size, embed_size, num_heads, vit_layers, num_groups, use_flash_attention)
         self.img_token_id = self.embedding.num_embeddings - 2
         self.end_img_token_id = self.embedding.num_embeddings - 1
 
@@ -817,6 +874,7 @@ PATCH_SIZE = 16
 VIT_LAYERS = 16
 NUM_GROUPS = 8  # Number of groups for Grouped Query Attention
 BATCH_SIZE = 4
+USE_FLASH_ATTENTION = False  # Set this to True to use Flash Attention
 
 """
 This is the scripts for Quantized LoRA finetuning.
@@ -904,7 +962,7 @@ class QuantizedTransformerLightningModule(pl.LightningModule):
 # Main training function
 def train_model():
     # Create the base model
-    base_model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE, IMG_SIZE, PATCH_SIZE, VIT_LAYERS, NUM_GROUPS)
+    base_model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE, IMG_SIZE, PATCH_SIZE, VIT_LAYERS, NUM_GROUPS, USE_FLASH_ATTENTION)
 
     # Load pre-trained weights
     load_model_weights(base_model, "model_weights.safetensors")
@@ -1195,6 +1253,7 @@ IMG_SIZE = 1024
 PATCH_SIZE = 16
 VIT_LAYERS = 16
 NUM_GROUPS = 8  # Number of groups for Grouped Query Attention
+USE_FLASH_ATTENTION = False  # Set this to True to use Flash Attention
 
 """
 This is the main code for training and define the parameter. Consist of:
@@ -1282,7 +1341,7 @@ class TransformerLightningModule(pl.LightningModule):
         return optimizer
 
 # Create the model
-model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE, IMG_SIZE, PATCH_SIZE, VIT_LAYERS, NUM_GROUPS)
+model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE, IMG_SIZE, PATCH_SIZE, VIT_LAYERS, NUM_GROUPS, USE_FLASH_ATTENTION)
 
 # Load model weights before training
 load_model_weights(model, "model_weights.safetensors")
@@ -1340,18 +1399,22 @@ from RoPE import RotaryPositionalEmbedding2D, apply_rotary_pos_emb_2d
 from activation import GeGLU
 from GQA import GroupedQueryAttention
 from RMSNorm import RMSNorm  # Import the RMSNorm layer
+from flashAttention import FlashAttention
 
 """
 This is the code for the vision encoder part. Consist of similar block like the main Transformer, but we use 2D RoPE by default. The training objective is fill-in-the-middle objective and integrated seamlessly with the main text generation training pipeline.
 """
 
 class ViTBlock(nn.Module):
-    def __init__(self, embed_size, num_heads, num_groups):
+    def __init__(self, embed_size, num_heads, num_groups, use_flash_attention=False):
         super(ViTBlock, self).__init__()
         self.embed_size = embed_size
         self.num_heads = num_heads
         self.head_dim = embed_size // num_heads
-        self.attention = GroupedQueryAttention(embed_size, num_heads, num_groups)
+        if use_flash_attention:
+            self.attention = FlashAttention(embed_size, num_heads, num_groups)
+        else:
+            self.attention = GroupedQueryAttention(embed_size, num_heads, num_groups)
         self.norm1 = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
         self.norm2 = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
         self.fc = nn.Sequential(
@@ -1388,7 +1451,7 @@ class ViTBlock(nn.Module):
         return x, (k, v)
 
 class VisionTransformer(nn.Module):
-    def __init__(self, img_size, patch_size, embed_size, num_heads, num_layers, num_groups):
+    def __init__(self, img_size, patch_size, embed_size, num_heads, num_layers, num_groups, use_flash_attention=False):
         super(VisionTransformer, self).__init__()
         self.embed_size = embed_size
         self.num_heads = num_heads
@@ -1396,7 +1459,7 @@ class VisionTransformer(nn.Module):
         self.num_patches = (img_size // patch_size) ** 2
         self.patch_embedding = nn.Conv2d(3, embed_size, kernel_size=patch_size, stride=patch_size)
         self.layers = nn.ModuleList([
-            ViTBlock(embed_size, num_heads, num_groups) for _ in range(num_layers)
+            ViTBlock(embed_size, num_heads, num_groups, use_flash_attention) for _ in range(num_layers)
         ])
         self.norm = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
 

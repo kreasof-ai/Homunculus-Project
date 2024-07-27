@@ -6,18 +6,22 @@ from RoPE import RotaryPositionalEmbedding2D, apply_rotary_pos_emb_2d
 from activation import GeGLU
 from GQA import GroupedQueryAttention
 from RMSNorm import RMSNorm  # Import the RMSNorm layer
+from flashAttention import FlashAttention
 
 """
 This is the code for the vision encoder part. Consist of similar block like the main Transformer, but we use 2D RoPE by default. The training objective is fill-in-the-middle objective and integrated seamlessly with the main text generation training pipeline.
 """
 
 class ViTBlock(nn.Module):
-    def __init__(self, embed_size, num_heads, num_groups):
+    def __init__(self, embed_size, num_heads, num_groups, use_flash_attention=False):
         super(ViTBlock, self).__init__()
         self.embed_size = embed_size
         self.num_heads = num_heads
         self.head_dim = embed_size // num_heads
-        self.attention = GroupedQueryAttention(embed_size, num_heads, num_groups)
+        if use_flash_attention:
+            self.attention = FlashAttention(embed_size, num_heads, num_groups)
+        else:
+            self.attention = GroupedQueryAttention(embed_size, num_heads, num_groups)
         self.norm1 = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
         self.norm2 = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
         self.fc = nn.Sequential(
@@ -54,7 +58,7 @@ class ViTBlock(nn.Module):
         return x, (k, v)
 
 class VisionTransformer(nn.Module):
-    def __init__(self, img_size, patch_size, embed_size, num_heads, num_layers, num_groups):
+    def __init__(self, img_size, patch_size, embed_size, num_heads, num_layers, num_groups, use_flash_attention=False):
         super(VisionTransformer, self).__init__()
         self.embed_size = embed_size
         self.num_heads = num_heads
@@ -62,7 +66,7 @@ class VisionTransformer(nn.Module):
         self.num_patches = (img_size // patch_size) ** 2
         self.patch_embedding = nn.Conv2d(3, embed_size, kernel_size=patch_size, stride=patch_size)
         self.layers = nn.ModuleList([
-            ViTBlock(embed_size, num_heads, num_groups) for _ in range(num_layers)
+            ViTBlock(embed_size, num_heads, num_groups, use_flash_attention) for _ in range(num_layers)
         ])
         self.norm = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
 

@@ -7,6 +7,7 @@ from ViT import VisionTransformer
 from GQA import GroupedQueryAttention
 from RMSNorm import RMSNorm
 from MLP import MLP
+from flashAttention import FlashAttention
 
 """
 This is the main code containing the main Transformer backbone. Containing few mechanism:
@@ -14,15 +15,19 @@ This is the main code containing the main Transformer backbone. Containing few m
 - Blend the image embedding sequence into the text embedding sequence.
 - Selective Rotary Positional Encoding. Given image embedding sequence, the RoPE is applied 2 dimensionally.
 - Custom KV-caching based on the number of internal iterations. Making sure every internal iterations have independent KV-cache.
+- Flash Attention option.
 """
 
 class TransformerBlock(nn.Module):
-    def __init__(self, embed_size, num_heads, num_groups):
+    def __init__(self, embed_size, num_heads, num_groups, use_flash_attention=False):
         super(TransformerBlock, self).__init__()
         self.embed_size = embed_size
         self.num_heads = num_heads
         self.head_dim = embed_size // num_heads
-        self.attention = GroupedQueryAttention(embed_size, num_heads, num_groups)
+        if use_flash_attention:
+            self.attention = FlashAttention(embed_size, num_heads, num_groups)
+        else:
+            self.attention = GroupedQueryAttention(embed_size, num_heads, num_groups)
         self.norm1 = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
         self.norm2 = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
         self.fc = nn.Sequential(
@@ -62,17 +67,17 @@ class TransformerBlock(nn.Module):
 
 
 class TransformerModel(nn.Module):
-    def __init__(self, vocab_size, embed_size, num_heads, num_layers, context_size, img_size, patch_size, vit_layers, num_groups):
+    def __init__(self, vocab_size, embed_size, num_heads, num_layers, context_size, img_size, patch_size, vit_layers, num_groups, use_flash_attention=False):
         super(TransformerModel, self).__init__()
         self.embedding = nn.Embedding(vocab_size, embed_size)
         self.layers = nn.ModuleList([
-            TransformerBlock(embed_size, num_heads, num_groups) for _ in range(num_layers)
+            TransformerBlock(embed_size, num_heads, num_groups, use_flash_attention) for _ in range(num_layers)
         ])
         self.fc = nn.Linear(embed_size, vocab_size)
         self.confidence_fc = MLP(embed_size, embed_size // 2, 1, 3)  # Confidence prediction layer
         self.context_size = context_size
         self.softmax = nn.Softmax(dim=-1)
-        self.vit = VisionTransformer(img_size, patch_size, embed_size, num_heads, vit_layers, num_groups)
+        self.vit = VisionTransformer(img_size, patch_size, embed_size, num_heads, vit_layers, num_groups, use_flash_attention)
         self.img_token_id = self.embedding.num_embeddings - 2
         self.end_img_token_id = self.embedding.num_embeddings - 1
 

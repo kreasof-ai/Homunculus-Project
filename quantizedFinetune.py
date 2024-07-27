@@ -30,6 +30,7 @@ PATCH_SIZE = 16
 VIT_LAYERS = 16
 NUM_GROUPS = 8  # Number of groups for Grouped Query Attention
 BATCH_SIZE = 4
+USE_FLASH_ATTENTION = False  # Set this to True to use Flash Attention
 
 """
 This is the scripts for Quantized LoRA finetuning.
@@ -117,7 +118,7 @@ class QuantizedTransformerLightningModule(pl.LightningModule):
 # Main training function
 def train_model():
     # Create the base model
-    base_model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE, IMG_SIZE, PATCH_SIZE, VIT_LAYERS, NUM_GROUPS)
+    base_model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE, IMG_SIZE, PATCH_SIZE, VIT_LAYERS, NUM_GROUPS, USE_FLASH_ATTENTION)
 
     # Load pre-trained weights
     load_model_weights(base_model, "model_weights.safetensors")
