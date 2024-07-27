@@ -122,11 +122,16 @@ def train_dataloader():
     # return dataloader
     return [(example_input, imgs)]
 
-# Define the Trainer with DeepSpeed
+# Define the Trainer with DeepSpeed and ZeRO-3
 trainer = pl.Trainer(
     max_epochs=NUM_EPOCHS,
     gpus=1,  # Use GPU if available
-    strategy=DeepSpeedStrategy(stage=2),  # Use DeepSpeed with ZeRO stage 2
+    strategy=DeepSpeedStrategy(
+        stage=3,  # Use ZeRO-3
+        offload_optimizer=True,  # Offload optimizer states to CPU
+        offload_parameters=True,  # Offload model parameters to CPU
+        nvme_offload_dir="/path/to/nvme",  # Path to NVMe storage for offloading
+    ),
     callbacks=[ModelCheckpoint(monitor='train_loss')]
 )
 
