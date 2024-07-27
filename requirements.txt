@@ -2,3 +2,4 @@ torch
 tokenizers
 safetensors
 pytorch-lightning
+deepspeed

@@ -133,6 +133,20 @@ This is the main code containing the main Transformer backbone. Containing few m
 """
 
 class TransformerBlock(nn.Module):
+    def __init__(self, embed_size, num_heads, num_groups):
+        super(TransformerBlock, self).__init__()
+        self.embed_size = embed_size
+        self.num_heads = num_heads
+        self.head_dim = embed_size // num_heads
+        self.attention = GroupedQueryAttention(embed_size, num_heads, num_groups)
+        self.norm1 = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
+        self.norm2 = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
+        self.fc = nn.Sequential(
+            GeGLU(embed_size),
+        )
+        self.rotary_emb = RotaryPositionalEmbedding(self.head_dim)
+        self.rotary_emb_2d = RotaryPositionalEmbedding2D(self.head_dim)
+        
     def forward(self, x, cache=None, img_pos=[], end_img_pos=[]):
         b, n, _ = x.shape
         q = k = v = x.view(b, n, self.num_heads, self.head_dim).transpose(1, 2)
@@ -173,6 +187,7 @@ class TransformerModel(nn.Module):
         self.fc = nn.Linear(embed_size, vocab_size)
         self.confidence_fc = MLP(embed_size, embed_size // 2, 1, 3)  # Confidence prediction layer
         self.context_size = context_size
+        self.softmax = nn.Softmax(dim=-1)
         self.vit = VisionTransformer(img_size, patch_size, embed_size, num_heads, vit_layers, num_groups)
         self.img_token_id = self.embedding.num_embeddings - 2
         self.end_img_token_id = self.embedding.num_embeddings - 1
@@ -195,7 +210,7 @@ class TransformerModel(nn.Module):
     def forward(self, x, imgs=None, num_iterations=1, use_cache=False, middle_training=False):
         # middle_training: If True, use fill-in-the-middle objective for image training
         # If False, use standard next-token prediction for text
-        
+
         img_seqs = []
         vit_loss = 0
         if imgs is not None:
@@ -218,13 +233,14 @@ class TransformerModel(nn.Module):
                 else:
                     x, cache = layer(x, cache=None, img_pos=img_pos, end_img_pos=end_img_pos)
         output = self.fc(x)
+        output = self.softmax(output)  # Apply softmax to the output logits
         confidence = torch.sigmoid(self.confidence_fc(x.mean(dim=1)))  # Sigmoid for confidence score
         if middle_training:
             return output, confidence, vit_loss
         else:
             return output, confidence
 
-    def generate(self, input_text, tokenizer, max_length=512, imgs=None, num_iterations=1, use_cache=False, beam_size=5):
+    def generate(self, input_text, tokenizer, max_length=128000, imgs=None, num_iterations=1, use_cache=False, beam_size=5):
         tokens = tokenizer.encode(input_text).ids
         input_tensor = torch.tensor(tokens).unsqueeze(0)
         
@@ -245,6 +261,7 @@ class TransformerModel(nn.Module):
             all_candidates = []
             for beam, score in beams:
                 output, _ = self.forward(beam, num_iterations=num_iterations, use_cache=use_cache)
+                output = self.softmax(output)  # Apply softmax to the output logits
                 next_token_logits = output[0, -1, :]
                 top_k_logits, top_k_indices = torch.topk(next_token_logits, beam_size)
                 
@@ -432,27 +449,17 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import pytorch_lightning as pl
-
 from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.strategies import DeepSpeedStrategy
 from saveModel import save_model_weights, load_model_weights
 from main import TransformerModel
 from tokenizers import Tokenizer, processors
 from torch.utils.data import Dataset, DataLoader
 
-"""
-This is the main code for training and define the parameter. Consist of:
-- PyTorch Lightning integration.
-- Model parameter definition.
-- Training loop definition.
-- Training based on confidence score and internal looping.
-- Training the image with fill-in-the-middle objective combined with the main transformer cross entropy loss.
-- Mask the image sequence for next-token text generation objective.
-"""
-
 # Define the constants
 VOCAB_SIZE = 128000
 EMBED_SIZE = 8192
-NUM_HEADS =  64
+NUM_HEADS = 64
 NUM_LAYERS = 80
 CONTEXT_SIZE = 128000
 LEARNING_RATE = 1.5e-4
@@ -562,10 +569,11 @@ def train_dataloader():
     # return dataloader
     return [(example_input, imgs)]
 
-# Define the Trainer
+# Define the Trainer with DeepSpeed
 trainer = pl.Trainer(
     max_epochs=NUM_EPOCHS,
     gpus=1,  # Use GPU if available
+    strategy=DeepSpeedStrategy(stage=2),  # Use DeepSpeed with ZeRO stage 2
     callbacks=[ModelCheckpoint(monitor='train_loss')]
 )
 
@@ -577,7 +585,6 @@ save_model_weights(model, "model_weights.safetensors")
 print("Model weights saved.")
 
 print("Training completed.")
-
 ```
 
 ## ViT.py

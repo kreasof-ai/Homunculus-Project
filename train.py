@@ -2,27 +2,17 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import pytorch_lightning as pl
-
 from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.strategies import DeepSpeedStrategy
 from saveModel import save_model_weights, load_model_weights
 from main import TransformerModel
 from tokenizers import Tokenizer, processors
 from torch.utils.data import Dataset, DataLoader
 
-"""
-This is the main code for training and define the parameter. Consist of:
-- PyTorch Lightning integration.
-- Model parameter definition.
-- Training loop definition.
-- Training based on confidence score and internal looping.
-- Training the image with fill-in-the-middle objective combined with the main transformer cross entropy loss.
-- Mask the image sequence for next-token text generation objective.
-"""
-
 # Define the constants
 VOCAB_SIZE = 128000
 EMBED_SIZE = 8192
-NUM_HEADS =  64
+NUM_HEADS = 64
 NUM_LAYERS = 80
 CONTEXT_SIZE = 128000
 LEARNING_RATE = 1.5e-4
@@ -132,10 +122,11 @@ def train_dataloader():
     # return dataloader
     return [(example_input, imgs)]
 
-# Define the Trainer
+# Define the Trainer with DeepSpeed
 trainer = pl.Trainer(
     max_epochs=NUM_EPOCHS,
     gpus=1,  # Use GPU if available
+    strategy=DeepSpeedStrategy(stage=2),  # Use DeepSpeed with ZeRO stage 2
     callbacks=[ModelCheckpoint(monitor='train_loss')]
 )
 
