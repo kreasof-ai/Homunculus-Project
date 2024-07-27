@@ -31,6 +31,10 @@ VIT_LAYERS = 16
 NUM_GROUPS = 8  # Number of groups for Grouped Query Attention
 BATCH_SIZE = 4
 
+"""
+This is the scripts for BitNet LoRA finetuning.
+"""
+
 # Load tokenizer
 tokenizer = Tokenizer.from_file("bpe_tokenizer_autoregressive.json")
 
