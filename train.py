@@ -26,6 +26,17 @@ PATCH_SIZE = 16
 VIT_LAYERS = 16
 NUM_GROUPS = 8  # Number of groups for Grouped Query Attention
 
+"""
+This is the main code for training and define the parameter. Consist of:
+- PyTorch Lightning integration.
+- Model parameter definition.
+- Training loop definition.
+- Training based on confidence score and internal looping.
+- Training the image with fill-in-the-middle objective combined with the main transformer cross entropy loss.
+- Mask the image sequence for next-token text generation objective.
+- DeepSpeed and ZeRO-3 optimization for parameter offloading to CPU and NVMe
+"""
+
 # Load tokenizer
 tokenizer = Tokenizer.from_file("bpe_tokenizer_autoregressive.json")
 tokenizer.post_processor = processors.TemplateProcessing(
