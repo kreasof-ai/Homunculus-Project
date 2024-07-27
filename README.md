@@ -9,6 +9,7 @@ Key features:
 - Grouped Query Attention.
 - PyTorch Lightning implementation.
 - DeepSpeed and ZeRO-3 integration. Automatically offload the memory overflow into CPU and NVMe.
+- Finetuning scripts example with LoRA adapters, with and without quantization.
 
 ![Internal latent loop (9)](https://github.com/user-attachments/assets/fe74e8b8-2f74-4b20-9f36-6f61c6946f2a)
 
