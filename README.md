@@ -22,6 +22,9 @@ So this is the simple explanation of how it works:
 
 > Notes: ~~I dunno why I'm impulsively adding unnecessary parts like ViT 🙃~~ I decided to put all of my ideas into this project, so this is probably not a simple learning project anymore 😅
 
+YouTube progress documentation playlist:
+- First short brief (27 July 2024): [https://youtu.be/NjK1BJyhrlI](https://youtu.be/NjK1BJyhrlI)
+
 Soon:
 - [Infini-attention](https://arxiv.org/abs/2404.07143) integration.
 - Speech Encoder integration, possibly Whisper-like architecture.
