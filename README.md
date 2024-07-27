@@ -8,7 +8,7 @@ Key features:
 - Custom KV-caching, making sure each internal iterations have an independent KV-cache.
 - Grouped Query Attention.
 - PyTorch Lightning implementation.
-- Deepspeed and ZeRO-3 integration. Automatically offload the memory overflow into CPU and NVMe.
+- DeepSpeed and ZeRO-3 integration. Automatically offload the memory overflow into CPU and NVMe.
 
 ![Internal latent loop (9)](https://github.com/user-attachments/assets/fe74e8b8-2f74-4b20-9f36-6f61c6946f2a)
 
