@@ -32,7 +32,7 @@ Soon:
 - [Infini-attention](https://arxiv.org/abs/2404.07143) integration.
 - Speech Encoder integration, possibly Whisper-like architecture.
 - 3D RoPE for continuous vision input (video).
-- Flash Attention integration.
+- ~~Flash Attention integration.~~ ✔️
 - Diffusion Transformer (DiT) integration for image detokenization.
 - Speech generation integration.
 - Influential token extraction.
