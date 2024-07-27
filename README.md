@@ -5,7 +5,7 @@ Key features:
 - Seamless integration with vision encoder. Along with selective RoPE for each image and text embedding sequence.
 - Internal iteration, making deeper abstraction while keeping the same parameter count.
 - GeGLU activation function, inspired by [Gemma 2 models](https://blog.google/technology/developers/google-gemma-2/).
-- Custom KV-caching, making sure each internal iterations have independent KC-cache.
+- Custom KV-caching, making sure each internal iterations have an independent KV-cache.
 - Grouped Query Attention.
 - PyTorch Lightning implementation.
 - Deepspeed and ZeRO-3 integration. Automatically offload the memory overflow into CPU and NVMe.
@@ -19,7 +19,7 @@ So this is the simple explanation of how it works:
 - We train an independent layer to output a confidence score, trained by loss value from the main training process.
 - When inference, both the next token and confidence scores are outputted and can determine how many iterations are needed for the current inference.
 - ~~No sophisticated tokenization or attention layer, just a pure simple transformer for learning purposes.~~
-- I'm adding GeGLU activation function, BPE tokenizer, selective 1D & 2D RoPE, safetensors, custom KV-caching, a simple vision encoder, grouped-query attention (GQA), RMS Norm, PyTorch Lightning, Deepspeed, and ZeRO-3.
+- I'm adding GeGLU activation function, BPE tokenizer, selective 1D & 2D RoPE, safetensors, custom KV-caching, a simple vision encoder, grouped-query attention (GQA), RMS Norm, PyTorch Lightning, DeepSpeed, and ZeRO-3.
 
 > Notes: ~~I dunno why I'm impulsively adding unnecessary parts like ViT 🙃~~ I decided to put all of my ideas into this project, so this is probably not a simple learning project anymore 😅
 
