@@ -6,3 +6,4 @@ deepspeed
 peft
 torchvision
 bitsandbytes
+bitnet
