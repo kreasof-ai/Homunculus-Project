@@ -1,5 +1,7 @@
+## activation.py
 
-// activation.py
+```python
+# activation.py
 
 import torch.nn as nn
 import torch.nn.functional as F
@@ -16,9 +18,12 @@ class GeGLU(nn.Module):
 
     def forward(self, x):
         return F.gelu(self.fc1(x)) * self.fc2(x)
+```
 
+## format.py
 
-// format.py
+```python
+# format.py
 
 import os
 
@@ -32,11 +37,12 @@ def write_python_scripts_to_markdown(directory, output_file):
             for file in files:
                 if file.endswith('.py'):
                     file_path = os.path.join(root, file)
-                    md_file.write('\n')
-                    md_file.write(f'// {file}\n\n')
+                    md_file.write(f'## {file}\n\n')
+                    md_file.write('```python\n')
+                    md_file.write(f'# {file}\n\n')
                     with open(file_path, 'r') as py_file:
                         md_file.write(py_file.read())
-                    md_file.write('\n\n')
+                    md_file.write('\n```\n\n')
 
 if __name__ == "__main__":
     directory_to_scan = './'  # Replace with your directory path
@@ -44,9 +50,12 @@ if __name__ == "__main__":
     write_python_scripts_to_markdown(directory_to_scan, output_markdown_file)
     print(f'All Python scripts have been written to {output_markdown_file}')
 
+```
 
+## GQA.py
 
-// GQA.py
+```python
+# GQA.py
 
 import torch
 import torch.nn as nn
@@ -98,9 +107,12 @@ class GroupedQueryAttention(nn.Module):
 
         return attn_output, attn_weights
 
+```
 
+## main.py
 
-// main.py
+```python
+# main.py
 
 import torch
 import torch.nn as nn
@@ -248,9 +260,12 @@ class TransformerModel(nn.Module):
                 break
         
         return tokenizer.decode(beams[0][0].squeeze().tolist())
+```
 
+## MLP.py
 
-// MLP.py
+```python
+# MLP.py
 
 import torch.nn as nn
 
@@ -272,9 +287,12 @@ class MLP(nn.Module):
 
     def forward(self, x):
         return self.model(x)
+```
 
+## RMSNorm.py
 
-// RMSNorm.py
+```python
+# RMSNorm.py
 
 import torch
 import torch.nn as nn
@@ -295,9 +313,12 @@ class RMSNorm(nn.Module):
         x = x / rms * self.scale
         return x
 
+```
 
+## RoPE.py
 
-// RoPE.py
+```python
+# RoPE.py
 
 import torch
 import torch.nn as nn
@@ -356,9 +377,12 @@ def rotate_half(x):
     x1, x2 = x.unbind(-1)
     return torch.cat((-x2, x1), dim=-1)
 
+```
 
+## saveModel.py
 
-// saveModel.py
+```python
+# saveModel.py
 
 from safetensors.torch import save_file, load_file
 
@@ -373,9 +397,12 @@ def save_model_weights(model, path):
 def load_model_weights(model, path):
     state_dict = load_file(path)
     model.load_state_dict(state_dict)
+```
 
+## tokenizer.py
 
-// tokenizer.py
+```python
+# tokenizer.py
 
 from tokenizers import Tokenizer, models, pre_tokenizers, trainers
 
@@ -394,9 +421,12 @@ def train_bpe_tokenizer(files, vocab_size=32000):
 # Train and save the tokenizer
 tokenizer = train_bpe_tokenizer(["train.txt"])
 tokenizer.save("bpe_tokenizer_autoregressive.json")
+```
 
+## train.py
 
-// train.py
+```python
+# train.py
 
 import torch
 import torch.nn as nn
@@ -548,9 +578,12 @@ print("Model weights saved.")
 
 print("Training completed.")
 
+```
 
+## ViT.py
 
-// ViT.py
+```python
+# ViT.py
 
 import torch
 import torch.nn as nn
@@ -654,4 +687,5 @@ class VisionTransformer(nn.Module):
         x = self.norm(masked_x)
 
         return x, loss
+```
 

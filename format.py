@@ -10,11 +10,12 @@ def write_python_scripts_to_markdown(directory, output_file):
             for file in files:
                 if file.endswith('.py'):
                     file_path = os.path.join(root, file)
-                    md_file.write('\n')
-                    md_file.write(f'// {file}\n\n')
+                    md_file.write(f'## {file}\n\n')
+                    md_file.write('```python\n')
+                    md_file.write(f'# {file}\n\n')
                     with open(file_path, 'r') as py_file:
                         md_file.write(py_file.read())
-                    md_file.write('\n\n')
+                    md_file.write('\n```\n\n')
 
 if __name__ == "__main__":
     directory_to_scan = './'  # Replace with your directory path
