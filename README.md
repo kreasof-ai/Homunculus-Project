@@ -5,6 +5,7 @@ Key features:
 - Seamless integration with vision encoder. Along with selective RoPE for each image and text embedding sequence.
 - Internal iteration, making deeper abstraction while keeping the same parameter count.
 - GeGLU activation function, inspired by [Gemma 2 models](https://blog.google/technology/developers/google-gemma-2/).
+- Custom KV-caching, making sure each internal iterations have independent KC-cache.
 - Grouped Query Attention.
 - PyTorch Lightning implementation.
 
