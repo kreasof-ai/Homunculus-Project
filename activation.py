@@ -1,6 +1,10 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
+"""
+We use GeGLU (Gated GeLU) activation function
+"""
+
 class GeGLU(nn.Module):
     def __init__(self, embed_size):
         super(GeGLU, self).__init__()

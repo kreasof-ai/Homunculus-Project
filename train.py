@@ -8,6 +8,16 @@ from saveModel import save_model_weights, load_model_weights
 from main import TransformerModel
 from tokenizers import Tokenizer, processors
 
+"""
+This is the main code for training and define the parameter. Consist of:
+- PyTorch Lightning integration.
+- Model parameter definition.
+- Training loop definition.
+- Training based on confidence score and internal looping.
+- Training the image with fill-in-the-middle objective combined with the main transformer cross entropy loss.
+- Mask the image sequence for next-token text generation objective.
+"""
+
 # Define the constants
 VOCAB_SIZE = 128000
 EMBED_SIZE = 8192

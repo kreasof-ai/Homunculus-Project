@@ -1,6 +1,10 @@
 import torch
 import torch.nn as nn
 
+"""
+This is the Rotary Positional Embedding parts. Consist of 1 dimensional for text sequence and 2 dimensional for image sequence.
+"""
+
 class RotaryPositionalEmbedding(nn.Module):
     def __init__(self, dim, base=500000):
         super().__init__()

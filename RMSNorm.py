@@ -1,6 +1,10 @@
 import torch
 import torch.nn as nn
 
+"""
+This is the implementation of Root Mean Square normalization layer for replacing a standard normalization layer
+"""
+
 class RMSNorm(nn.Module):
     def __init__(self, embed_size, eps=1e-8):
         super(RMSNorm, self).__init__()

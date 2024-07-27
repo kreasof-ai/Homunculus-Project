@@ -1,5 +1,9 @@
 import torch.nn as nn
 
+"""
+This is simple implementation of MLP for a certain layer that needs more than a single linear layer
+"""
+
 class MLP(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim, num_layers):
         super(MLP, self).__init__()

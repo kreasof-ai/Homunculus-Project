@@ -1,5 +1,9 @@
 import os
 
+"""
+This is a utility script for extracting the whole code into a single markdown file. Nothing important for the main functionality
+"""
+
 def write_python_scripts_to_markdown(directory, output_file):
     with open(output_file, 'w') as md_file:
         for root, _, files in os.walk(directory):

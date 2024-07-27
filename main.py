@@ -8,6 +8,14 @@ from GQA import GroupedQueryAttention
 from RMSNorm import RMSNorm
 from MLP import MLP
 
+"""
+This is the main code containing the main Transformer backbone. Containing few mechanism:
+- Independent confidence layer for determine how many internal loop. Implemented as a few layers of MLP.
+- Blend the image embedding sequence into the text embedding sequence.
+- Selective Rotary Positional Encoding. Given image embedding sequence, the RoPE is applied 2 dimensionally.
+- Custom KV-caching based on the number of internal iterations. Making sure every internal iterations have independent KV-cache.
+"""
+
 class TransformerBlock(nn.Module):
     def __init__(self, embed_size, num_heads, num_groups):
         super(TransformerBlock, self).__init__()

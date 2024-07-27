@@ -2,6 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+"""
+We use Grouped Query Attention
+"""
+
 class GroupedQueryAttention(nn.Module):
     def __init__(self, embed_size, num_heads, num_groups):
         super(GroupedQueryAttention, self).__init__()

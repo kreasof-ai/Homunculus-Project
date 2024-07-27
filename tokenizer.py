@@ -1,5 +1,9 @@
 from tokenizers import Tokenizer, models, pre_tokenizers, trainers
 
+"""
+This is the code to generate the custom tokenizer. Using Byte Pair Encoding
+"""
+
 def train_bpe_tokenizer(files, vocab_size=32000):
     tokenizer = Tokenizer(models.BPE())
     tokenizer.pre_tokenizer = pre_tokenizers.Whitespace()

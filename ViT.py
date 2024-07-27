@@ -8,6 +8,10 @@ from activation import GeGLU
 from GQA import GroupedQueryAttention
 from RMSNorm import RMSNorm  # Import the RMSNorm layer
 
+"""
+This is the code for the vision encoder part. Consist of similar block like the main Transformer, but we use 2D RoPE by default. The training objective is fill-in-the-middle objective and integrated seamlessly with the main text generation training pipeline.
+"""
+
 class ViTBlock(nn.Module):
     def __init__(self, embed_size, num_heads, num_groups):
         super(TransformerBlock, self).__init__()
