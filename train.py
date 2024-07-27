@@ -2,11 +2,12 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint
 
+from pytorch_lightning.callbacks import ModelCheckpoint
 from saveModel import save_model_weights, load_model_weights
 from main import TransformerModel
 from tokenizers import Tokenizer, processors
+from torch.utils.data import Dataset, DataLoader
 
 """
 This is the main code for training and define the parameter. Consist of:
@@ -46,6 +47,23 @@ tokenizer.post_processor = processors.TemplateProcessing(
     ],
 )
 
+# For pre-processing real dataset
+class DatasetLoader(Dataset):
+    def __init__(self, text_data, image_data):
+        self.text_data = text_data
+        self.image_data = image_data
+
+    def __len__(self):
+        return len(self.text_data)
+
+    def __getitem__(self, idx):
+        text = self.tokenizer.encode(self.text_data[idx]).ids
+        image = self.image_data[idx]  # Assume this is already a tensor
+        return torch.tensor(text), image
+
+# dataset = DatasetLoader(text_data, image_data)
+# dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+
 class TransformerLightningModule(pl.LightningModule):
     def __init__(self, model, tokenizer, learning_rate):
         super(TransformerLightningModule, self).__init__()
@@ -71,8 +89,8 @@ class TransformerLightningModule(pl.LightningModule):
         output, confidence, vit_loss = self(example_input[:, :-1], imgs=imgs, num_iterations=num_iterations, use_cache=True, middle_training=True)
         output = output.view(-1, VOCAB_SIZE)[mask]
         loss = self.criterion(output, target) + vit_loss
-        confidence_target = 1 - (loss.item() / LOSS_THRESHOLD)
-        confidence_target = torch.tensor([[confidence_target]], dtype=torch.float)
+        confidence_target = max(0, min(1, 1 - (loss.item() / LOSS_THRESHOLD)))
+        confidence_target = torch.tensor([[confidence_target]], dtype=torch.float, device=self.device)
         confidence_loss = self.confidence_criterion(confidence, confidence_target)
 
         while confidence.mean().item() < CONFIDENCE_THRESHOLD and num_iterations < MAX_ITERATIONS:
@@ -80,8 +98,8 @@ class TransformerLightningModule(pl.LightningModule):
             output, confidence, vit_loss = self(example_input[:, :-1], imgs=imgs, num_iterations=num_iterations, use_cache=True, middle_training=True)
             output = output.view(-1, VOCAB_SIZE)[mask]
             loss = self.criterion(output, target) + vit_loss
-            confidence_target = 1 - (loss.item() / LOSS_THRESHOLD)
-            confidence_target = torch.tensor([[confidence_target]], dtype=torch.float)
+            confidence_target = max(0, min(1, 1 - (loss.item() / LOSS_THRESHOLD)))
+            confidence_target = torch.tensor([[confidence_target]], dtype=torch.float, device=self.device)
             confidence_loss = self.confidence_criterion(confidence, confidence_target)
 
         total_loss = loss + confidence_loss
@@ -111,6 +129,7 @@ def train_dataloader():
     # Example image inputs (batch size 1, 3 channels, 224x224)
     imgs = [torch.randn(1, 3, 224, 224), torch.randn(1, 3, 224, 224)]
 
+    # return dataloader
     return [(example_input, imgs)]
 
 # Define the Trainer

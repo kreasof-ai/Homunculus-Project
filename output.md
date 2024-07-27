@@ -1,10 +1,12 @@
-## activation.py
 
-```python
-# activation.py
+// activation.py
 
 import torch.nn as nn
 import torch.nn.functional as F
+
+"""
+We use GeGLU (Gated GeLU) activation function
+"""
 
 class GeGLU(nn.Module):
     def __init__(self, embed_size):
@@ -14,14 +16,15 @@ class GeGLU(nn.Module):
 
     def forward(self, x):
         return F.gelu(self.fc1(x)) * self.fc2(x)
-```
 
-## format.py
 
-```python
-# format.py
+// format.py
 
 import os
+
+"""
+This is a utility script for extracting the whole code into a single markdown file. Nothing important for the main functionality
+"""
 
 def write_python_scripts_to_markdown(directory, output_file):
     with open(output_file, 'w') as md_file:
@@ -29,12 +32,11 @@ def write_python_scripts_to_markdown(directory, output_file):
             for file in files:
                 if file.endswith('.py'):
                     file_path = os.path.join(root, file)
-                    md_file.write(f'## {file}\n\n')
-                    md_file.write('```python\n')
-                    md_file.write(f'# {file}\n\n')
+                    md_file.write('\n')
+                    md_file.write(f'// {file}\n\n')
                     with open(file_path, 'r') as py_file:
                         md_file.write(py_file.read())
-                    md_file.write('\n```\n\n')
+                    md_file.write('\n\n')
 
 if __name__ == "__main__":
     directory_to_scan = './'  # Replace with your directory path
@@ -42,16 +44,17 @@ if __name__ == "__main__":
     write_python_scripts_to_markdown(directory_to_scan, output_markdown_file)
     print(f'All Python scripts have been written to {output_markdown_file}')
 
-```
 
-## GQA.py
 
-```python
-# GQA.py
+// GQA.py
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+"""
+We use Grouped Query Attention
+"""
 
 class GroupedQueryAttention(nn.Module):
     def __init__(self, embed_size, num_heads, num_groups):
@@ -95,12 +98,9 @@ class GroupedQueryAttention(nn.Module):
 
         return attn_output, attn_weights
 
-```
 
-## main.py
 
-```python
-# main.py
+// main.py
 
 import torch
 import torch.nn as nn
@@ -112,29 +112,18 @@ from GQA import GroupedQueryAttention
 from RMSNorm import RMSNorm
 from MLP import MLP
 
+"""
+This is the main code containing the main Transformer backbone. Containing few mechanism:
+- Independent confidence layer for determine how many internal loop. Implemented as a few layers of MLP.
+- Blend the image embedding sequence into the text embedding sequence.
+- Selective Rotary Positional Encoding. Given image embedding sequence, the RoPE is applied 2 dimensionally.
+- Custom KV-caching based on the number of internal iterations. Making sure every internal iterations have independent KV-cache.
+"""
+
 class TransformerBlock(nn.Module):
-    def __init__(self, embed_size, num_heads, num_groups):
-        super(TransformerBlock, self).__init__()
-        self.embed_size = embed_size
-        self.num_heads = num_heads
-        self.head_dim = embed_size // num_heads
-        self.attention = GroupedQueryAttention(embed_size, num_heads, num_groups)
-        self.norm1 = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
-        self.norm2 = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
-        self.fc = nn.Sequential(
-            GeGLU(embed_size),
-        )
-        self.rotary_emb = RotaryPositionalEmbedding(self.head_dim)
-        self.rotary_emb_2d = RotaryPositionalEmbedding2D(self.head_dim)
-        
     def forward(self, x, cache=None, img_pos=[], end_img_pos=[]):
         b, n, _ = x.shape
-        q = k = v = x
-        
-        # Split into heads
-        q = q.view(b, n, self.num_heads, self.head_dim).transpose(1, 2)
-        k = k.view(b, n, self.num_heads, self.head_dim).transpose(1, 2)
-        v = v.view(b, n, self.num_heads, self.head_dim).transpose(1, 2)
+        q = k = v = x.view(b, n, self.num_heads, self.head_dim).transpose(1, 2)
         
         # Apply 1D RoPE by default
         pos_emb = self.rotary_emb(q)
@@ -151,8 +140,8 @@ class TransformerBlock(nn.Module):
         
         # Reshape back to original shape
         q = q.transpose(1, 2).contiguous().view(b, n, self.embed_size)
-        k = k.transpose(1, 2).contiguous().view(b, n, self.embed_size)
-        v = v.transpose(1, 2).contiguous().view(b, n, self.embed_size)
+        k = k.transpose(1, 2).contiguous().view(b, -1, self.embed_size)  # -1 to account for cached tokens
+        v = v.transpose(1, 2).contiguous().view(b, -1, self.embed_size)  # -1 to account for cached tokens
         
         attn_output, _ = self.attention(q, k, v)
         x = self.norm1(x + attn_output)
@@ -160,6 +149,7 @@ class TransformerBlock(nn.Module):
         x = self.norm2(x + fc_output)
         
         return x, (k, v)
+
 
 class TransformerModel(nn.Module):
     def __init__(self, vocab_size, embed_size, num_heads, num_layers, context_size, img_size, patch_size, vit_layers, num_groups):
@@ -179,14 +169,21 @@ class TransformerModel(nn.Module):
         img_pos = (text_tensor == self.img_token_id).nonzero(as_tuple=True)
         end_img_pos = (text_tensor == self.end_img_token_id).nonzero(as_tuple=True)
         
-        assert len(img_pos[0]) == len(end_img_pos[0]) == len(img_embeddings)
+        if len(img_pos[0]) != len(end_img_pos[0]) or len(img_pos[0]) != len(img_embeddings):
+            raise ValueError("Mismatch in number of image tokens and image embeddings")
         
+        new_tensor = text_tensor.clone()
+        offset = 0
         for start, end, img_emb in zip(img_pos[0], end_img_pos[0], img_embeddings):
-            text_tensor = torch.cat((text_tensor[:start+1], img_emb, text_tensor[end:]), dim=1)
+            new_tensor = torch.cat((new_tensor[:start+1+offset], img_emb, new_tensor[end+offset:]), dim=1)
+            offset += img_emb.size(1) - (end - start - 1)
         
-        return text_tensor, img_pos[0], end_img_pos[0]
+        return new_tensor, img_pos[0], end_img_pos[0]
 
     def forward(self, x, imgs=None, num_iterations=1, use_cache=False, middle_training=False):
+        # middle_training: If True, use fill-in-the-middle objective for image training
+        # If False, use standard next-token prediction for text
+        
         img_seqs = []
         vit_loss = 0
         if imgs is not None:
@@ -215,42 +212,51 @@ class TransformerModel(nn.Module):
         else:
             return output, confidence
 
-    def generate(self, input_text, tokenizer, max_length=512, imgs=None, num_iterations=1, use_cache=False):
+    def generate(self, input_text, tokenizer, max_length=512, imgs=None, num_iterations=1, use_cache=False, beam_size=5):
         tokens = tokenizer.encode(input_text).ids
         input_tensor = torch.tensor(tokens).unsqueeze(0)
+        
+        # Process images
         img_seqs = []
         if imgs is not None:
             for img in imgs:
-                img_embedding, loss = self.vit(img, use_cache=use_cache)
+                img_embedding, _ = self.vit(img, use_cache=use_cache)
                 img_seqs.append(img_embedding)
         
-        generated_tokens = input_tensor.clone()
-        
         if img_seqs:
-            generated_tokens, img_pos, end_img_pos = self.insert_image_embeddings(generated_tokens, img_seqs)
+            input_tensor, img_pos, end_img_pos = self.insert_image_embeddings(input_tensor, img_seqs)
+        
+        # Initialize beam
+        beams = [(input_tensor, 0)]
         
         for _ in range(max_length - len(tokens)):
-            output, confidence = self.forward(generated_tokens, num_iterations=num_iterations, use_cache=use_cache)
-            next_token_logits = output[0, -1, :]
-            next_token = torch.argmax(next_token_logits, dim=-1).unsqueeze(0)
+            all_candidates = []
+            for beam, score in beams:
+                output, _ = self.forward(beam, num_iterations=num_iterations, use_cache=use_cache)
+                next_token_logits = output[0, -1, :]
+                top_k_logits, top_k_indices = torch.topk(next_token_logits, beam_size)
+                
+                for logit, index in zip(top_k_logits, top_k_indices):
+                    new_beam = torch.cat((beam, index.unsqueeze(0).unsqueeze(0)), dim=1)
+                    new_score = score - logit.item()  # Negative log likelihood
+                    all_candidates.append((new_beam, new_score))
             
-            if next_token.item() in {self.img_token_id, self.end_img_token_id}:
-                # Skip generating tokens for [IMG] and [/IMG]
-                continue
+            # Select top beam_size candidates
+            beams = sorted(all_candidates, key=lambda x: x[1])[:beam_size]
             
-            generated_tokens = torch.cat((generated_tokens, next_token.unsqueeze(0)), dim=1)
-            if next_token.item() == tokenizer.token_to_id("[SEP]"):
+            if beams[0][0][:, -1].item() == tokenizer.token_to_id("[SEP]"):
                 break
         
-        return tokenizer.decode(generated_tokens.squeeze().tolist())
-```
+        return tokenizer.decode(beams[0][0].squeeze().tolist())
 
-## MLP.py
 
-```python
-# MLP.py
+// MLP.py
 
 import torch.nn as nn
+
+"""
+This is simple implementation of MLP for a certain layer that needs more than a single linear layer
+"""
 
 class MLP(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim, num_layers):
@@ -266,15 +272,16 @@ class MLP(nn.Module):
 
     def forward(self, x):
         return self.model(x)
-```
 
-## RMSNorm.py
 
-```python
-# RMSNorm.py
+// RMSNorm.py
 
 import torch
 import torch.nn as nn
+
+"""
+This is the implementation of Root Mean Square normalization layer for replacing a standard normalization layer
+"""
 
 class RMSNorm(nn.Module):
     def __init__(self, embed_size, eps=1e-8):
@@ -288,15 +295,16 @@ class RMSNorm(nn.Module):
         x = x / rms * self.scale
         return x
 
-```
 
-## RoPE.py
 
-```python
-# RoPE.py
+// RoPE.py
 
 import torch
 import torch.nn as nn
+
+"""
+This is the Rotary Positional Embedding parts. Consist of 1 dimensional for text sequence and 2 dimensional for image sequence.
+"""
 
 class RotaryPositionalEmbedding(nn.Module):
     def __init__(self, dim, base=500000):
@@ -348,14 +356,15 @@ def rotate_half(x):
     x1, x2 = x.unbind(-1)
     return torch.cat((-x2, x1), dim=-1)
 
-```
 
-## saveModel.py
 
-```python
-# saveModel.py
+// saveModel.py
 
 from safetensors.torch import save_file, load_file
+
+"""
+This is the code for saving and load the model with safetensors format
+"""
 
 def save_model_weights(model, path):
     state_dict = model.state_dict()
@@ -364,14 +373,15 @@ def save_model_weights(model, path):
 def load_model_weights(model, path):
     state_dict = load_file(path)
     model.load_state_dict(state_dict)
-```
 
-## tokenizer.py
 
-```python
-# tokenizer.py
+// tokenizer.py
 
 from tokenizers import Tokenizer, models, pre_tokenizers, trainers
+
+"""
+This is the code to generate the custom tokenizer. Using Byte Pair Encoding
+"""
 
 def train_bpe_tokenizer(files, vocab_size=32000):
     tokenizer = Tokenizer(models.BPE())
@@ -384,22 +394,30 @@ def train_bpe_tokenizer(files, vocab_size=32000):
 # Train and save the tokenizer
 tokenizer = train_bpe_tokenizer(["train.txt"])
 tokenizer.save("bpe_tokenizer_autoregressive.json")
-```
 
-## train.py
 
-```python
-# train.py
+// train.py
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint
 
+from pytorch_lightning.callbacks import ModelCheckpoint
 from saveModel import save_model_weights, load_model_weights
 from main import TransformerModel
 from tokenizers import Tokenizer, processors
+from torch.utils.data import Dataset, DataLoader
+
+"""
+This is the main code for training and define the parameter. Consist of:
+- PyTorch Lightning integration.
+- Model parameter definition.
+- Training loop definition.
+- Training based on confidence score and internal looping.
+- Training the image with fill-in-the-middle objective combined with the main transformer cross entropy loss.
+- Mask the image sequence for next-token text generation objective.
+"""
 
 # Define the constants
 VOCAB_SIZE = 128000
@@ -429,6 +447,23 @@ tokenizer.post_processor = processors.TemplateProcessing(
     ],
 )
 
+# For pre-processing real dataset
+class DatasetLoader(Dataset):
+    def __init__(self, text_data, image_data):
+        self.text_data = text_data
+        self.image_data = image_data
+
+    def __len__(self):
+        return len(self.text_data)
+
+    def __getitem__(self, idx):
+        text = self.tokenizer.encode(self.text_data[idx]).ids
+        image = self.image_data[idx]  # Assume this is already a tensor
+        return torch.tensor(text), image
+
+# dataset = DatasetLoader(text_data, image_data)
+# dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+
 class TransformerLightningModule(pl.LightningModule):
     def __init__(self, model, tokenizer, learning_rate):
         super(TransformerLightningModule, self).__init__()
@@ -454,8 +489,8 @@ class TransformerLightningModule(pl.LightningModule):
         output, confidence, vit_loss = self(example_input[:, :-1], imgs=imgs, num_iterations=num_iterations, use_cache=True, middle_training=True)
         output = output.view(-1, VOCAB_SIZE)[mask]
         loss = self.criterion(output, target) + vit_loss
-        confidence_target = 1 - (loss.item() / LOSS_THRESHOLD)
-        confidence_target = torch.tensor([[confidence_target]], dtype=torch.float)
+        confidence_target = max(0, min(1, 1 - (loss.item() / LOSS_THRESHOLD)))
+        confidence_target = torch.tensor([[confidence_target]], dtype=torch.float, device=self.device)
         confidence_loss = self.confidence_criterion(confidence, confidence_target)
 
         while confidence.mean().item() < CONFIDENCE_THRESHOLD and num_iterations < MAX_ITERATIONS:
@@ -463,8 +498,8 @@ class TransformerLightningModule(pl.LightningModule):
             output, confidence, vit_loss = self(example_input[:, :-1], imgs=imgs, num_iterations=num_iterations, use_cache=True, middle_training=True)
             output = output.view(-1, VOCAB_SIZE)[mask]
             loss = self.criterion(output, target) + vit_loss
-            confidence_target = 1 - (loss.item() / LOSS_THRESHOLD)
-            confidence_target = torch.tensor([[confidence_target]], dtype=torch.float)
+            confidence_target = max(0, min(1, 1 - (loss.item() / LOSS_THRESHOLD)))
+            confidence_target = torch.tensor([[confidence_target]], dtype=torch.float, device=self.device)
             confidence_loss = self.confidence_criterion(confidence, confidence_target)
 
         total_loss = loss + confidence_loss
@@ -494,6 +529,7 @@ def train_dataloader():
     # Example image inputs (batch size 1, 3 channels, 224x224)
     imgs = [torch.randn(1, 3, 224, 224), torch.randn(1, 3, 224, 224)]
 
+    # return dataloader
     return [(example_input, imgs)]
 
 # Define the Trainer
@@ -512,26 +548,26 @@ print("Model weights saved.")
 
 print("Training completed.")
 
-```
 
-## ViT.py
 
-```python
-# ViT.py
+// ViT.py
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from RoPE import RotaryPositionalEmbedding2D, apply_rotary_pos_emb_2d
-from main import TransformerBlock
 from activation import GeGLU
 from GQA import GroupedQueryAttention
 from RMSNorm import RMSNorm  # Import the RMSNorm layer
 
+"""
+This is the code for the vision encoder part. Consist of similar block like the main Transformer, but we use 2D RoPE by default. The training objective is fill-in-the-middle objective and integrated seamlessly with the main text generation training pipeline.
+"""
+
 class ViTBlock(nn.Module):
     def __init__(self, embed_size, num_heads, num_groups):
-        super(TransformerBlock, self).__init__()
+        super(ViTBlock, self).__init__()
         self.embed_size = embed_size
         self.num_heads = num_heads
         self.head_dim = embed_size // num_heads
@@ -584,15 +620,18 @@ class VisionTransformer(nn.Module):
         ])
         self.norm = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
 
-    def forward(self, x, use_cache=False, middle_training=False, mask_ratio=0.2):
+    def forward(self, x, use_cache=False, middle_training=False, mask_ratio=0.2, seed=None):
         b, c, h, w = x.shape
         x = self.patch_embedding(x)  # (B, embed_size, H/patch_size, W/patch_size)
         x = x.flatten(2).transpose(1, 2)  # (B, num_patches, embed_size)
 
+        # If enable fill-in-the-middle training
         if middle_training:
-            mask = torch.randn(b, self.num_patches).bernoulli(p=1 - mask_ratio).unsqueeze(-1).expand(x.size())
-            if mask.device != x.device:
-                mask = mask.to(x.device)
+            # Deterministic masking if seed is pre-defined
+            if seed is not None:
+                torch.manual_seed(seed)
+            mask = torch.rand(b, self.num_patches) > mask_ratio
+            mask = mask.unsqueeze(-1).expand(x.size()).to(x.device)
             masked_x = x * mask
         else:
             masked_x = x
@@ -606,6 +645,7 @@ class VisionTransformer(nn.Module):
             else:
                 masked_x, _ = layer(masked_x)
 
+        # If enable fill-in-the-middle training then return the MSE loss for the masked image patch
         if middle_training:
             loss = F.mse_loss(masked_x[mask == 0], x[mask == 0])
         else:
@@ -614,5 +654,4 @@ class VisionTransformer(nn.Module):
         x = self.norm(masked_x)
 
         return x, loss
-```
 

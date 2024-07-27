@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from RoPE import RotaryPositionalEmbedding2D, apply_rotary_pos_emb_2d
-from main import TransformerBlock
 from activation import GeGLU
 from GQA import GroupedQueryAttention
 from RMSNorm import RMSNorm  # Import the RMSNorm layer
@@ -14,7 +13,7 @@ This is the code for the vision encoder part. Consist of similar block like the 
 
 class ViTBlock(nn.Module):
     def __init__(self, embed_size, num_heads, num_groups):
-        super(TransformerBlock, self).__init__()
+        super(ViTBlock, self).__init__()
         self.embed_size = embed_size
         self.num_heads = num_heads
         self.head_dim = embed_size // num_heads
@@ -67,15 +66,18 @@ class VisionTransformer(nn.Module):
         ])
         self.norm = RMSNorm(embed_size)  # Use RMSNorm instead of LayerNorm
 
-    def forward(self, x, use_cache=False, middle_training=False, mask_ratio=0.2):
+    def forward(self, x, use_cache=False, middle_training=False, mask_ratio=0.2, seed=None):
         b, c, h, w = x.shape
         x = self.patch_embedding(x)  # (B, embed_size, H/patch_size, W/patch_size)
         x = x.flatten(2).transpose(1, 2)  # (B, num_patches, embed_size)
 
+        # If enable fill-in-the-middle training
         if middle_training:
-            mask = torch.randn(b, self.num_patches).bernoulli(p=1 - mask_ratio).unsqueeze(-1).expand(x.size())
-            if mask.device != x.device:
-                mask = mask.to(x.device)
+            # Deterministic masking if seed is pre-defined
+            if seed is not None:
+                torch.manual_seed(seed)
+            mask = torch.rand(b, self.num_patches) > mask_ratio
+            mask = mask.unsqueeze(-1).expand(x.size()).to(x.device)
             masked_x = x * mask
         else:
             masked_x = x
@@ -89,6 +91,7 @@ class VisionTransformer(nn.Module):
             else:
                 masked_x, _ = layer(masked_x)
 
+        # If enable fill-in-the-middle training then return the MSE loss for the masked image patch
         if middle_training:
             loss = F.mse_loss(masked_x[mask == 0], x[mask == 0])
         else:
