@@ -3,3 +3,6 @@ tokenizers
 safetensors
 pytorch-lightning
 deepspeed
+peft
+torchvision
+bitsandbytes
