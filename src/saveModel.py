@@ -17,19 +17,19 @@ def save_model_weights(model, base_path, num_files=1):
         chunk_keys = keys[i * chunk_size:(i + 1) * chunk_size]
         chunk_state_dict = {key: state_dict[key] for key in chunk_keys}
         save_file(chunk_state_dict, f"{base_path}_part_{i}.safetensors")
-        index[f"{base_path}_part_{i}.safetensors"] = list(chunk_state_dict.keys())
+        index[f"../output/{base_path}_part_{i}.safetensors"] = list(chunk_state_dict.keys())
 
-    with open(f"{base_path}.index.json", 'w') as f:
+    with open(f"../output/{base_path}.index.json", 'w') as f:
         json.dump(index, f, indent=4)
 
 def load_model_weights(model, base_path, num_files=1):
     state_dict = {}
 
-    with open(f"{base_path}.index.json", 'r') as f:
+    with open(f"../output/{base_path}.index.json", 'r') as f:
         index = json.load(f)
 
     for i in range(num_files):
-        file_path = f"{base_path}_part_{i}.safetensors"
+        file_path = f"../output/{base_path}_part_{i}.safetensors"
         if file_path in index:
             chunk_state_dict = load_file(file_path)
             state_dict.update(chunk_state_dict)

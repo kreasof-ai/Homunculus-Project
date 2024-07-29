@@ -13,5 +13,5 @@ def train_bpe_tokenizer(files, vocab_size=128000):
     return tokenizer
 
 # Train and save the tokenizer
-tokenizer = train_bpe_tokenizer(["tokenizer_text.txt"])
-tokenizer.save("bpe_tokenizer_autoregressive.json")
+tokenizer = train_bpe_tokenizer(["../data/tokenizer_text.txt"])
+tokenizer.save("../output/bpe_tokenizer_autoregressive.json")

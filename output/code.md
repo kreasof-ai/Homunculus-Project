@@ -64,7 +64,7 @@ This is the scripts for BitNet LoRA finetuning.
 """
 
 # Load tokenizer
-tokenizer = Tokenizer.from_file("bpe_tokenizer_autoregressive.json")
+tokenizer = Tokenizer.from_file("../output/bpe_tokenizer_autoregressive.json")
 
 # Image transformation
 transform = transforms.Compose([
@@ -151,7 +151,7 @@ def train_model():
     base_model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE, IMG_SIZE, PATCH_SIZE, VIT_LAYERS, NUM_GROUPS, USE_FLASH_ATTENTION)
 
     # Load pre-trained weights
-    load_model_weights(base_model, "model_weights.safetensors")
+    load_model_weights(base_model, "model_weights", num_files=4)
 
     # Define LoRA configuration
     lora_config = LoraConfig(
@@ -244,7 +244,7 @@ def train_model():
     merged_model = model.model.merge_and_unload()
 
     # Save the merged model
-    save_model_weights(merged_model, "merged_bitnet_weights.safetensors")
+    save_model_weights(merged_model, "merged_bitnet_weights", num_files=4)
 
     print("BitNet weights merged with base model and saved.")
 
@@ -296,7 +296,7 @@ This is the scripts for LoRA finetuning.
 """
 
 # Load tokenizer
-tokenizer = Tokenizer.from_file("bpe_tokenizer_autoregressive.json")
+tokenizer = Tokenizer.from_file("../output/bpe_tokenizer_autoregressive.json")
 
 # Image transformation
 transform = transforms.Compose([
@@ -380,7 +380,7 @@ def train_model():
     base_model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE, IMG_SIZE, PATCH_SIZE, VIT_LAYERS, NUM_GROUPS, USE_FLASH_ATTENTION)
 
     # Load pre-trained weights
-    load_model_weights(base_model, "model_weights.safetensors")
+    load_model_weights(base_model, "model_weights", num_files=4)
 
     # Identify and name the layers you want to adapt
     for i, layer in enumerate(base_model.layers):
@@ -487,7 +487,7 @@ def train_model():
     merged_model = model.model.merge_and_unload()
 
     # Save the merged model
-    save_model_weights(merged_model, "merged_model_weights.safetensors")
+    save_model_weights(merged_model, "merged_model_weights", num_files=4)
 
     print("LoRA weights merged with base model and saved.")
 
@@ -572,7 +572,7 @@ def write_python_scripts_to_markdown(directory, output_file):
 
 if __name__ == "__main__":
     directory_to_scan = './'  # Replace with your directory path
-    output_markdown_file = 'output.md'  # Replace with your desired output file name
+    output_markdown_file = '../output/code.md'  # Replace with your desired output file name
     write_python_scripts_to_markdown(directory_to_scan, output_markdown_file)
     print(f'All Python scripts have been written to {output_markdown_file}')
 
@@ -881,7 +881,7 @@ This is the scripts for Quantized LoRA finetuning.
 """
 
 # Load tokenizer
-tokenizer = Tokenizer.from_file("bpe_tokenizer_autoregressive.json")
+tokenizer = Tokenizer.from_file("../output/bpe_tokenizer_autoregressive.json")
 
 # Image transformation
 transform = transforms.Compose([
@@ -965,7 +965,7 @@ def train_model():
     base_model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE, IMG_SIZE, PATCH_SIZE, VIT_LAYERS, NUM_GROUPS, USE_FLASH_ATTENTION)
 
     # Load pre-trained weights
-    load_model_weights(base_model, "model_weights.safetensors")
+    load_model_weights(base_model, "model_weights", num_files=4)
 
     # Prepare model for k-bit training
     base_model = prepare_model_for_kbit_training(base_model)
@@ -1078,7 +1078,7 @@ def train_model():
     merged_model = model.model.merge_and_unload()
 
     # Save the merged model
-    save_model_weights(merged_model, "merged_quantized_model_weights.safetensors")
+    save_model_weights(merged_model, "merged_quantized_model_weights", num_files=4)
 
     print("Quantized LoRA weights merged with base model and saved.")
 
@@ -1183,17 +1183,41 @@ def rotate_half(x):
 # saveModel.py
 
 from safetensors.torch import save_file, load_file
+import json
 
 """
-This is the code for saving and load the model with safetensors format
+This is the code for saving and loading the model with safetensors format,
+dividing the model weights into N amount files and generating an index file.
 """
 
-def save_model_weights(model, path):
+def save_model_weights(model, base_path, num_files=1):
     state_dict = model.state_dict()
-    save_file(state_dict, path)
+    keys = list(state_dict.keys())
+    chunk_size = len(keys) // num_files
 
-def load_model_weights(model, path):
-    state_dict = load_file(path)
+    index = {}
+
+    for i in range(num_files):
+        chunk_keys = keys[i * chunk_size:(i + 1) * chunk_size]
+        chunk_state_dict = {key: state_dict[key] for key in chunk_keys}
+        save_file(chunk_state_dict, f"{base_path}_part_{i}.safetensors")
+        index[f"{base_path}_part_{i}.safetensors"] = list(chunk_state_dict.keys())
+
+    with open(f"{base_path}.index.json", 'w') as f:
+        json.dump(index, f, indent=4)
+
+def load_model_weights(model, base_path, num_files=1):
+    state_dict = {}
+
+    with open(f"{base_path}.index.json", 'r') as f:
+        index = json.load(f)
+
+    for i in range(num_files):
+        file_path = f"{base_path}_part_{i}.safetensors"
+        if file_path in index:
+            chunk_state_dict = load_file(file_path)
+            state_dict.update(chunk_state_dict)
+
     model.load_state_dict(state_dict)
 ```
 
@@ -1217,8 +1241,8 @@ def train_bpe_tokenizer(files, vocab_size=128000):
     return tokenizer
 
 # Train and save the tokenizer
-tokenizer = train_bpe_tokenizer(["tokenizer_text.txt"])
-tokenizer.save("bpe_tokenizer_autoregressive.json")
+tokenizer = train_bpe_tokenizer(["../data/tokenizer_text.txt"])
+tokenizer.save("../output/bpe_tokenizer_autoregressive.json")
 ```
 
 ## train.py
@@ -1267,7 +1291,7 @@ This is the main code for training and define the parameter. Consist of:
 """
 
 # Load tokenizer
-tokenizer = Tokenizer.from_file("bpe_tokenizer_autoregressive.json")
+tokenizer = Tokenizer.from_file("../output/bpe_tokenizer_autoregressive.json")
 tokenizer.post_processor = processors.TemplateProcessing(
     single="[CLS] $A [SEP]",
     pair="[CLS] $A [SEP] $B:1 [SEP]:1",
@@ -1343,8 +1367,8 @@ class TransformerLightningModule(pl.LightningModule):
 # Create the model
 model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE, IMG_SIZE, PATCH_SIZE, VIT_LAYERS, NUM_GROUPS, USE_FLASH_ATTENTION)
 
-# Load model weights before training
-load_model_weights(model, "model_weights.safetensors")
+# Load model weights from 4 files
+load_model_weights(model, "model_weights", num_files=4)
 print("Model weights loaded.")
 
 # Create the LightningModule
@@ -1378,8 +1402,8 @@ trainer = pl.Trainer(
 # Train the model
 trainer.fit(lightning_model, train_dataloaders=train_dataloader())
 
-# Save model weights at the end of training
-save_model_weights(model, "model_weights.safetensors")
+# Save model weights divided into 4 files
+save_model_weights(model, "model_weights", num_files=4)
 print("Model weights saved.")
 
 print("Training completed.")

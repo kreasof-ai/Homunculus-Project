@@ -11,6 +11,7 @@ from PIL import Image
 import pytorch_lightning as pl
 from pytorch_lightning.strategies import DeepSpeedStrategy
 from pytorch_lightning.callbacks import ModelCheckpoint
+from bitnet import replace_linears_in_pytorch_model
 
 # Define the constants
 VOCAB_SIZE = 128000
@@ -32,11 +33,11 @@ BATCH_SIZE = 4
 USE_FLASH_ATTENTION = False  # Set this to True to use Flash Attention
 
 """
-This is the scripts for LoRA finetuning.
+This is the scripts for BitNet LoRA finetuning.
 """
 
 # Load tokenizer
-tokenizer = Tokenizer.from_file("bpe_tokenizer_autoregressive.json")
+tokenizer = Tokenizer.from_file(".../output/bpe_tokenizer_autoregressive.json")
 
 # Image transformation
 transform = transforms.Compose([
@@ -67,16 +68,19 @@ class TextImageDataset(Dataset):
         return input_ids, image
 
 # PyTorch Lightning Module
-class TransformerLightningModule(pl.LightningModule):
+class BitNetLightningModule(pl.LightningModule):
     def __init__(self, base_model, lora_config):
         super().__init__()
         self.base_model = base_model
         self.model = get_peft_model(self.base_model, lora_config)
         self.criterion = nn.CrossEntropyLoss()
         self.confidence_criterion = nn.MSELoss()
+        
+        # Replace all linear layers with BitLinear
+        replace_linears_in_pytorch_model(self.model)
 
-    def forward(self, input_ids, imgs, num_iterations=1):
-        return self.model(input_ids, imgs=imgs, num_iterations=num_iterations, use_cache=True, middle_training=True)
+    def forward(self, input_ids, imgs):
+        return self.model(input_ids, imgs=imgs, use_cache=True, middle_training=True)
 
     def training_step(self, batch, batch_idx):
         input_ids, images = batch
@@ -122,19 +126,6 @@ def train_model():
     # Load pre-trained weights
     load_model_weights(base_model, "model_weights", num_files=4)
 
-    # Identify and name the layers you want to adapt
-    for i, layer in enumerate(base_model.layers):
-        layer.attention.query.name = f'main_transformer.layers.{i}.attention.query'
-        layer.attention.key.name = f'main_transformer.layers.{i}.attention.key'
-        layer.attention.value.name = f'main_transformer.layers.{i}.attention.value'
-        layer.attention.out.name = f'main_transformer.layers.{i}.attention.out'
-
-    for i, layer in enumerate(base_model.vit.layers):
-        layer.attention.query.name = f'vit.layers.{i}.attention.query'
-        layer.attention.key.name = f'vit.layers.{i}.attention.key'
-        layer.attention.value.name = f'vit.layers.{i}.attention.value'
-        layer.attention.out.name = f'vit.layers.{i}.attention.out'
-
     # Define LoRA configuration
     lora_config = LoraConfig(
         r=16,
@@ -148,7 +139,6 @@ def train_model():
             "vit.layers.*.attention.key",
             "vit.layers.*.attention.value",
             "vit.layers.*.attention.out",
-            "confidence_fc.*",  # Include confidence layer in LoRA
         ],
         lora_dropout=0.05,
         bias="none",
@@ -156,12 +146,12 @@ def train_model():
     )
 
     # Create Lightning module
-    model = TransformerLightningModule(base_model, lora_config)
+    model = BitNetLightningModule(base_model, lora_config)
 
     # Sample data (replace with your dataset)
     data = [
-        ("This is a sample text with an image [IMG][/IMG]", "path/to/image1.jpg"),
-        ("Another example of text and image [IMG][/IMG] data.", "path/to/image2.jpg"),
+        ("This is a sample text with an image [IMG]", "path/to/image1.jpg"),
+        ("Another example of text and image [IMG] data.", "path/to/image2.jpg"),
         # Add more text-image pairs...
     ]
 
@@ -200,7 +190,7 @@ def train_model():
     # Define callbacks
     checkpoint_callback = ModelCheckpoint(
         dirpath='checkpoints',
-        filename='model-{epoch:02d}-{train_loss:.2f}',
+        filename='bitnet-model-{epoch:02d}-{train_loss:.2f}',
         save_top_k=3,
         monitor='train_loss'
     )
@@ -218,18 +208,18 @@ def train_model():
     # Train the model
     trainer.fit(model, dataloader)
 
-    # Save the fine-tuned LoRA weights
-    model.model.save_pretrained("lora_weights")
+    # Save the fine-tuned BitNet weights
+    model.model.save_pretrained("bitnet_weights")
 
-    print("Fine-tuning completed. LoRA weights saved.")
+    print("Fine-tuning completed. BitNet weights saved.")
 
-    # Merge the LoRA weights with the base model
+    # Merge the LoRA weights with the base model (if needed)
     merged_model = model.model.merge_and_unload()
 
     # Save the merged model
-    save_model_weights(merged_model, "merged_model_weights", num_files=4)
+    save_model_weights(merged_model, "merged_bitnet_weights", num_files=4)
 
-    print("LoRA weights merged with base model and saved.")
+    print("BitNet weights merged with base model and saved.")
 
 if __name__ == "__main__":
     train_model()

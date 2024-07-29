@@ -19,6 +19,6 @@ def write_python_scripts_to_markdown(directory, output_file):
 
 if __name__ == "__main__":
     directory_to_scan = './'  # Replace with your directory path
-    output_markdown_file = 'output.md'  # Replace with your desired output file name
+    output_markdown_file = '../output/code.md'  # Replace with your desired output file name
     write_python_scripts_to_markdown(directory_to_scan, output_markdown_file)
     print(f'All Python scripts have been written to {output_markdown_file}')

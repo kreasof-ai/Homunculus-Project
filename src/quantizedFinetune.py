@@ -37,7 +37,7 @@ This is the scripts for Quantized LoRA finetuning.
 """
 
 # Load tokenizer
-tokenizer = Tokenizer.from_file("bpe_tokenizer_autoregressive.json")
+tokenizer = Tokenizer.from_file("../output/bpe_tokenizer_autoregressive.json")
 
 # Image transformation
 transform = transforms.Compose([
