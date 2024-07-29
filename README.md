@@ -50,3 +50,6 @@ Soon:
 - Mamba2 block (?).
 - Kolmogorov Arnold Network (KAN).
 - Mixture of Experts block.
+- Fast object detection integration, possibly YOLO or RT-DETR.
+- OCR model integration.
+- [MIinference](https://github.com/microsoft/MInference)
