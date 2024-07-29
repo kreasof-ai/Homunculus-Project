@@ -52,4 +52,5 @@ Soon:
 - Mixture of Experts block.
 - Fast object detection integration, possibly YOLO or RT-DETR.
 - OCR model integration.
-- [MIinference](https://github.com/microsoft/MInference)
+- [MIinference](https://github.com/microsoft/MInference).
+- Pre-train model integration, possibly Gemma 2 since it's uses the same activation function.
