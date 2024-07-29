@@ -47,4 +47,5 @@ Soon:
 - [Discrete Latent Representation](https://arxiv.org/abs/2312.01203).
 - HuggingFace Hub integration (dataset and upload models).
 - xFormers.
-- 
+- Mamba2 block (?)
+- Kolmogorov Arnold Network (KAN)
