@@ -1,3 +1,7 @@
+![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54) 
+![PyTorch](https://img.shields.io/badge/PyTorch-%23EE4C2C.svg?style=for-the-badge&logo=PyTorch&logoColor=white)
+![Jupyter Notebook](https://img.shields.io/badge/jupyter-%23FA0F00.svg?style=for-the-badge&logo=jupyter&logoColor=white)
+
 # Experimental Custom Transformer Architecture
 By [Habibullah Akbar](https://chavyv.vercel.app).
 
@@ -12,6 +16,7 @@ Key features:
 - Finetuning scripts example with LoRA adapters, with and without quantization.
 - Add BitNet implementation.
 - Flash Attention implementation.
+- Jupyter notebook example, both for training and finetuning.
 
 ![Internal latent loop (9)](https://github.com/user-attachments/assets/fe74e8b8-2f74-4b20-9f36-6f61c6946f2a)
 
@@ -37,4 +42,7 @@ Soon:
 - Diffusion Transformer (DiT) integration for image detokenization.
 - Speech generation integration.
 - Influential token extraction.
-- [Discrete Latent Representation](https://arxiv.org/abs/2312.01203)
+- [Discrete Latent Representation](https://arxiv.org/abs/2312.01203).
+- HuggingFace Hub integration (dataset and upload models).
+- xFormers.
+- 
