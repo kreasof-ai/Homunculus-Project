@@ -64,7 +64,7 @@ This is the scripts for BitNet LoRA finetuning.
 """
 
 # Load tokenizer
-tokenizer = Tokenizer.from_file("../output/bpe_tokenizer_autoregressive.json")
+tokenizer = Tokenizer.from_file(".../output/bpe_tokenizer_autoregressive.json")
 
 # Image transformation
 transform = transforms.Compose([
@@ -543,38 +543,6 @@ class FlashAttention(nn.Module):
         out = self.out_proj(attn_output)
         
         return out, None  # Return None for compatibility with existing implementation
-
-```
-
-## format.py
-
-```python
-# format.py
-
-import os
-
-"""
-This is a utility script for extracting the whole code into a single markdown file. Nothing important for the main functionality
-"""
-
-def write_python_scripts_to_markdown(directory, output_file):
-    with open(output_file, 'w') as md_file:
-        for root, _, files in os.walk(directory):
-            for file in files:
-                if file.endswith('.py'):
-                    file_path = os.path.join(root, file)
-                    md_file.write(f'## {file}\n\n')
-                    md_file.write('```python\n')
-                    md_file.write(f'# {file}\n\n')
-                    with open(file_path, 'r') as py_file:
-                        md_file.write(py_file.read())
-                    md_file.write('\n```\n\n')
-
-if __name__ == "__main__":
-    directory_to_scan = './'  # Replace with your directory path
-    output_markdown_file = '../output/code.md'  # Replace with your desired output file name
-    write_python_scripts_to_markdown(directory_to_scan, output_markdown_file)
-    print(f'All Python scripts have been written to {output_markdown_file}')
 
 ```
 
@@ -1201,19 +1169,19 @@ def save_model_weights(model, base_path, num_files=1):
         chunk_keys = keys[i * chunk_size:(i + 1) * chunk_size]
         chunk_state_dict = {key: state_dict[key] for key in chunk_keys}
         save_file(chunk_state_dict, f"{base_path}_part_{i}.safetensors")
-        index[f"{base_path}_part_{i}.safetensors"] = list(chunk_state_dict.keys())
+        index[f"../output/{base_path}_part_{i}.safetensors"] = list(chunk_state_dict.keys())
 
-    with open(f"{base_path}.index.json", 'w') as f:
+    with open(f"../output/{base_path}.index.json", 'w') as f:
         json.dump(index, f, indent=4)
 
 def load_model_weights(model, base_path, num_files=1):
     state_dict = {}
 
-    with open(f"{base_path}.index.json", 'r') as f:
+    with open(f"../output/{base_path}.index.json", 'r') as f:
         index = json.load(f)
 
     for i in range(num_files):
-        file_path = f"{base_path}_part_{i}.safetensors"
+        file_path = f"../output/{base_path}_part_{i}.safetensors"
         if file_path in index:
             chunk_state_dict = load_file(file_path)
             state_dict.update(chunk_state_dict)
