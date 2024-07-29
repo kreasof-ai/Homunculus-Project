@@ -115,8 +115,8 @@ class TransformerLightningModule(pl.LightningModule):
 # Create the model
 model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE, IMG_SIZE, PATCH_SIZE, VIT_LAYERS, NUM_GROUPS, USE_FLASH_ATTENTION)
 
-# Load model weights before training
-load_model_weights(model, "model_weights.safetensors")
+# Load model weights from 4 files
+load_model_weights(model, "model_weights", num_files=4)
 print("Model weights loaded.")
 
 # Create the LightningModule
@@ -150,8 +150,8 @@ trainer = pl.Trainer(
 # Train the model
 trainer.fit(lightning_model, train_dataloaders=train_dataloader())
 
-# Save model weights at the end of training
-save_model_weights(model, "model_weights.safetensors")
+# Save model weights divided into 4 files
+save_model_weights(model, "model_weights", num_files=4)
 print("Model weights saved.")
 
 print("Training completed.")

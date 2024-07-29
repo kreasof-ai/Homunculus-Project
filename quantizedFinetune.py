@@ -121,7 +121,7 @@ def train_model():
     base_model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE, IMG_SIZE, PATCH_SIZE, VIT_LAYERS, NUM_GROUPS, USE_FLASH_ATTENTION)
 
     # Load pre-trained weights
-    load_model_weights(base_model, "model_weights.safetensors")
+    load_model_weights(base_model, "model_weights", num_files=4)
 
     # Prepare model for k-bit training
     base_model = prepare_model_for_kbit_training(base_model)
@@ -234,7 +234,7 @@ def train_model():
     merged_model = model.model.merge_and_unload()
 
     # Save the merged model
-    save_model_weights(merged_model, "merged_quantized_model_weights.safetensors")
+    save_model_weights(merged_model, "merged_quantized_model_weights", num_files=4)
 
     print("Quantized LoRA weights merged with base model and saved.")
 

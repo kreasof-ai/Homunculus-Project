@@ -124,7 +124,7 @@ def train_model():
     base_model = TransformerModel(VOCAB_SIZE, EMBED_SIZE, NUM_HEADS, NUM_LAYERS, CONTEXT_SIZE, IMG_SIZE, PATCH_SIZE, VIT_LAYERS, NUM_GROUPS, USE_FLASH_ATTENTION)
 
     # Load pre-trained weights
-    load_model_weights(base_model, "model_weights.safetensors")
+    load_model_weights(base_model, "model_weights", num_files=4)
 
     # Define LoRA configuration
     lora_config = LoraConfig(
@@ -217,7 +217,7 @@ def train_model():
     merged_model = model.model.merge_and_unload()
 
     # Save the merged model
-    save_model_weights(merged_model, "merged_bitnet_weights.safetensors")
+    save_model_weights(merged_model, "merged_bitnet_weights", num_files=4)
 
     print("BitNet weights merged with base model and saved.")
 
