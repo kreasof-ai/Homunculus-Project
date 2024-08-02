@@ -75,8 +75,8 @@ class TransformerLightningModule(pl.LightningModule):
         self.criterion = nn.CrossEntropyLoss(ignore_index=tokenizer.token_to_id("[PAD]"))
         self.confidence_criterion = nn.MSELoss()
 
-    def forward(self, x, imgs=None, num_iterations=1, use_cache=False, middle_training=False):
-        return self.model(x, imgs=imgs, num_iterations=num_iterations, use_cache=use_cache, middle_training=middle_training)
+    def forward(self, x, imgs=None, num_iterations=1, use_cache=False, middle_training=False, past_outputs=None, past_img_post=None, past_end_img_post=None):
+        return self.model(x, imgs=imgs, num_iterations=num_iterations, use_cache=use_cache, middle_training=middle_training, past_outputs=past_outputs, past_img_post=past_img_post, past_end_img_post=past_end_img_post)
 
     def training_step(self, batch, batch_idx):
         example_input, imgs = batch
@@ -88,7 +88,7 @@ class TransformerLightningModule(pl.LightningModule):
         target = target[mask]
 
         num_iterations = BASE_ITERATIONS
-        output, confidence, vit_loss = self(example_input[:, :-1], imgs=imgs, num_iterations=num_iterations, use_cache=True, middle_training=True)
+        output, confidence, past_outputs, past_img_post, past_end_img_post, vit_loss = self(example_input[:, :-1], imgs=imgs, num_iterations=num_iterations, use_cache=True, middle_training=True)
         output = output.view(-1, VOCAB_SIZE)[mask]
         loss = self.criterion(output, target) + vit_loss
         confidence_target = max(0, min(1, 1 - (loss.item() / LOSS_THRESHOLD)))
@@ -97,7 +97,7 @@ class TransformerLightningModule(pl.LightningModule):
 
         while confidence.mean().item() < CONFIDENCE_THRESHOLD and num_iterations < MAX_ITERATIONS:
             num_iterations += 1
-            output, confidence, vit_loss = self(example_input[:, :-1], imgs=imgs, num_iterations=num_iterations, use_cache=True, middle_training=True)
+            output, confidence, past_outputs, past_img_post, past_end_img_post, vit_loss = self(example_input[:, :-1], imgs=imgs, num_iterations=num_iterations, use_cache=True, middle_training=True, past_outputs=past_outputs, past_img_post=past_img_post, past_end_img_post=past_end_img_post)
             output = output.view(-1, VOCAB_SIZE)[mask]
             loss = self.criterion(output, target) + vit_loss
             confidence_target = max(0, min(1, 1 - (loss.item() / LOSS_THRESHOLD)))

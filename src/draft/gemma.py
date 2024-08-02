@@ -2,6 +2,10 @@ import torch
 import torch.nn as nn
 import math
 
+"""
+Gemma 2 implementation (still draft)
+"""
+
 class Gemma2RMSNorm(nn.Module):
     def __init__(self, dim, eps=1e-6):
         super().__init__()

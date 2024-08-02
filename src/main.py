@@ -96,73 +96,49 @@ class TransformerModel(nn.Module):
         
         return new_tensor, img_pos[0], end_img_pos[0]
 
-    def forward(self, x, imgs=None, num_iterations=1, use_cache=False, middle_training=False):
-        # middle_training: If True, use fill-in-the-middle objective for image training
-        # If False, use standard next-token prediction for text
+    def forward(self, x, imgs=None, num_iterations=1, use_cache=False, middle_training=False, past_outputs=None, past_img_post=None, past_end_img_post=None):
+        # Use provided past_outputs if available
 
-        img_seqs = []
-        vit_loss = 0
-        if imgs is not None:
-            for img in imgs:
-                img_embedding, loss = self.vit(img, use_cache=use_cache, middle_training=middle_training)
-                img_seqs.append(img_embedding)
-                vit_loss += loss
+        if past_outputs is not None and use_cache:
+            x = past_outputs  # Use the output from previous iteration
+            img_pos, end_img_pos = past_img_post, past_end_img_post
+        else:
+            # middle_training: If True, use fill-in-the-middle objective for image training
+            # If False, use standard next-token prediction for text
 
-        x = self.embedding(x)
-        
-        img_pos, end_img_pos = [], []
-        if img_seqs:
-            x, img_pos, end_img_pos = self.insert_image_embeddings(x, img_seqs)
+            img_seqs = []
+            vit_loss = 0
+            if imgs is not None:
+                for img in imgs:
+                    img_embedding, loss = self.vit(img, use_cache=use_cache, middle_training=middle_training)
+                    img_seqs.append(img_embedding)
+                    vit_loss += loss
+
+            x = self.embedding(x)
+            
+            img_pos, end_img_pos = [], []
+            if img_seqs:
+                x, img_pos, end_img_pos = self.insert_image_embeddings(x, img_seqs)
+            
+            past_outputs = []  # Initialize if not provided
 
         caches = [[] for _ in range(len(self.layers))]
-        for _ in range(num_iterations):
+
+        for iteration in range(num_iterations):
             for i, layer in enumerate(self.layers):
                 if use_cache and caches[i]:
                     x, caches[i] = layer(x, cache=caches[i][-1], img_pos=img_pos, end_img_pos=end_img_pos)
                 else:
                     x, cache = layer(x, cache=None, img_pos=img_pos, end_img_pos=end_img_pos)
+            
+            # Store the output for last iteration
+            if iteration >= num_iterations - 1:  # -1 because iterations start from 0
+                past_outputs.append(x)
+
         output = self.fc(x)
         output = self.softmax(output)  # Apply softmax to the output logits
         confidence = torch.sigmoid(self.confidence_fc(x.mean(dim=1)))  # Sigmoid for confidence score
         if middle_training:
-            return output, confidence, vit_loss
+            return output, confidence, past_outputs, img_pos, end_img_pos, vit_loss
         else:
-            return output, confidence
-
-    def generate(self, input_text, tokenizer, max_length=128000, imgs=None, num_iterations=1, use_cache=False, beam_size=5):
-        tokens = tokenizer.encode(input_text).ids
-        input_tensor = torch.tensor(tokens).unsqueeze(0)
-        
-        # Process images
-        img_seqs = []
-        if imgs is not None:
-            for img in imgs:
-                img_embedding, _ = self.vit(img, use_cache=use_cache)
-                img_seqs.append(img_embedding)
-        
-        if img_seqs:
-            input_tensor, img_pos, end_img_pos = self.insert_image_embeddings(input_tensor, img_seqs)
-        
-        # Initialize beam
-        beams = [(input_tensor, 0)]
-        
-        for _ in range(max_length - len(tokens)):
-            all_candidates = []
-            for beam, score in beams:
-                output, _ = self.forward(beam, num_iterations=num_iterations, use_cache=use_cache)
-                output = self.softmax(output)  # Apply softmax to the output logits
-                next_token_logits = output[0, -1, :]
-                top_k_logits, top_k_indices = torch.topk(next_token_logits, beam_size)
-                
-                for logit, index in zip(top_k_logits, top_k_indices):
-                    new_beam = torch.cat((beam, index.unsqueeze(0).unsqueeze(0)), dim=1)
-                    new_score = score - logit.item()  # Negative log likelihood
-                    all_candidates.append((new_beam, new_score))
-            
-            # Select top beam_size candidates
-            beams = sorted(all_candidates, key=lambda x: x[1])[:beam_size]
-            
-            if beams[0][0][:, -1].item() == tokenizer.token_to_id("[SEP]"):
-                break
-        
-        return tokenizer.decode(beams[0][0].squeeze().tolist())
+            return output, confidence, past_outputs, img_pos, end_img_pos
