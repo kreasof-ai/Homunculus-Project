@@ -56,5 +56,5 @@ Soon:
 - Pre-train model integration, possibly Gemma 2 since it's uses the same activation function.
 
 > UPDATE LICENSE:
-***This software is dual-licensed under the terms of the GNU Affero General Public License (AGPL) and a commercial license. For commercial use, please contact Habibullah Akbar at akbar2habibullah to obtain a commercial license. Commercial use is defined as any use of the software for financial gain, including but not limited to, selling, licensing, or distributing the software as part of a product or service.***
+***This software is dual-licensed under the terms of the GNU Affero General Public License (AGPL) and a commercial license. For commercial use, please contact Habibullah Akbar at akbar2habibullah.gmail to obtain a commercial license. Commercial use is defined as any use of the software for financial gain, including but not limited to, selling, licensing, or distributing the software as part of a product or service.***
 
