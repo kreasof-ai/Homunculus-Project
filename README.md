@@ -4,7 +4,7 @@
 
 [![Follow me on HF](https://huggingface.co/datasets/huggingface/badges/resolve/main/follow-me-on-HF-md.svg)](https://huggingface.co/ChavyvAkvar)
 
-# Experimental Custom Transformer Architecture
+# Homunculus Project - Experimental Custom Transformer Architecture
 By [Habibullah Akbar](https://chavyv.vercel.app).
 
 Key features:
