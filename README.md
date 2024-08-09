@@ -12,6 +12,7 @@ Key features:
 - Internal iteration, making deeper abstraction while keeping the same parameter count.
 - GeGLU activation function, inspired by [Gemma 2 models](https://blog.google/technology/developers/google-gemma-2/).
 - Custom KV-caching, making sure each internal iterations have an independent KV-cache.
+- BPE tokenizer based on KBBI.
 - Grouped Query Attention.
 - PyTorch Lightning implementation.
 - DeepSpeed and ZeRO-3 integration. Automatically offload the memory overflow into CPU and NVMe.
@@ -28,10 +29,6 @@ So this is the simple explanation of how it works:
 - If the loss value is high, this iteration is triggered, with max iterations set to 10.
 - We train an independent layer to output a confidence score, trained by loss value from the main training process.
 - When inference, both the next token and confidence scores are outputted and can determine how many iterations are needed for the current inference.
-- ~~No sophisticated tokenization or attention layer, just a pure simple transformer for learning purposes.~~
-- I'm adding GeGLU activation function, BPE tokenizer, selective 1D & 2D RoPE, safetensors, custom KV-caching, a simple vision encoder, grouped-query attention (GQA), RMS Norm, PyTorch Lightning, DeepSpeed, and ZeRO-3.
-
-> Notes: ~~I dunno why I'm impulsively adding unnecessary parts like ViT 🙃~~ I decided to put all of my ideas into this project, so this is probably not a simple learning project anymore 😅
 
 YouTube progress documentation playlist:
 - First short brief (27 July 2024): [https://youtu.be/NjK1BJyhrlI](https://youtu.be/NjK1BJyhrlI)
@@ -53,7 +50,7 @@ Soon:
 - Fast object detection integration, possibly YOLO or RT-DETR.
 - OCR model integration.
 - [MIinference](https://github.com/microsoft/MInference).
-- Pre-train model integration, possibly Gemma 2 since it's uses the same activation function.
+- Pre-train model integration, possibly Gemma 2 since it uses the same activation function.
 
 > UPDATE LICENSE:
 ***This software is dual-licensed under the terms of the GNU Affero General Public License (AGPL) and a commercial license. For commercial use, please contact Habibullah Akbar at akbar2habibullah.gmail to obtain a commercial license. Commercial use is defined as any use of the software for financial gain, including but not limited to, selling, licensing, or distributing the software as part of a product or service.***
