@@ -11,7 +11,7 @@ Key features:
 - Seamless integration with vision encoder. Along with selective RoPE for each image and text embedding sequence.
 - Internal iteration, making deeper abstraction while keeping the same parameter count.
 - GeGLU activation function, inspired by [Gemma 2 models](https://blog.google/technology/developers/google-gemma-2/).
-- Custom KV-caching, making sure each internal iterations have an independent KV-cache.
+- Custom KV-caching, making sure each internal iteration has an independent KV-cache.
 - BPE tokenizer based on KBBI.
 - Grouped Query Attention.
 - PyTorch Lightning implementation.
@@ -20,6 +20,7 @@ Key features:
 - Add BitNet implementation.
 - Flash Attention implementation.
 - Jupyter notebook example, both for training and finetuning.
+- Dual license open-source for individuals, paid for commercial uses.
 
 ![Internal latent loop (9)](https://github.com/user-attachments/assets/fe74e8b8-2f74-4b20-9f36-6f61c6946f2a)
 
@@ -50,6 +51,7 @@ Soon:
 - OCR model integration.
 - [MIinference](https://github.com/microsoft/MInference).
 - Pre-train model integration, possibly Gemma 2 since it uses the same activation function.
+- Citation to all of the papers used as references or inspirations.
 
 > UPDATE LICENSE:
 ***This software is dual-licensed under the terms of the GNU Affero General Public License (AGPL) and a commercial license. For commercial use, please contact Habibullah Akbar at akbar2habibullah.gmail to obtain a commercial license. Commercial use is defined as any use of the software for financial gain, including but not limited to, selling, licensing, or distributing the software as part of a product or service.***
