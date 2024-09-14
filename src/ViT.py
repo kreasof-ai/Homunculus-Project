@@ -8,6 +8,8 @@ from GQA import GroupedQueryAttention
 from RMSNorm import RMSNorm  # Import the RMSNorm layer
 from flashAttention import FlashAttention
 
+from transformers import ViTModel, ViTConfig
+
 """
 This is the code for the vision encoder part. Consist of similar block like the main Transformer, but we use 2D RoPE by default. The training objective is fill-in-the-middle objective and integrated seamlessly with the main text generation training pipeline.
 """
@@ -104,3 +106,21 @@ class VisionTransformer(nn.Module):
         x = self.norm(masked_x)
 
         return x, loss
+    
+class VisionTransformerFromPretrained(nn.Module):
+    def __init__(self, img_size, patch_size, embed_size, num_heads, num_layers, num_groups, use_flash_attention=False):
+        super(VisionTransformer, self).__init__()
+        self.vit_model = ViTModel.from_pretrained('google/vit-base-patch16-224')
+        # Optionally, adjust embed_size if different
+        if self.vit_model.config.hidden_size != embed_size:
+            self.vit_model.classifier = nn.Linear(self.vit_model.config.hidden_size, embed_size)
+
+        self.embed_size = embed_size
+
+    def forward(self, x, use_cache=False, middle_training=False):
+        outputs = self.vit_model(x)
+        hidden_states = outputs.last_hidden_state  # (batch_size, num_patches, hidden_size)
+        # Project if necessary
+        if self.vit_model.config.hidden_size != self.embed_size:
+            hidden_states = self.vit_model.classifier(hidden_states)
+        return hidden_states, 0  # Return hidden states and loss (if any)

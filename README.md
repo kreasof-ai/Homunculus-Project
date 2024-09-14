@@ -18,6 +18,7 @@ Key features:
 - Finetuning scripts example with LoRA adapters, with and without quantization.
 - Add BitNet implementation.
 - Flash Attention implementation.
+- Speech encoder
 - Jupyter notebook example, both for training and finetuning.
 
 ![Internal latent loop (9)](https://github.com/user-attachments/assets/fe74e8b8-2f74-4b20-9f36-6f61c6946f2a)
@@ -38,7 +39,6 @@ YouTube progress documentation playlist:
 
 Soon:
 - [Infini-attention](https://arxiv.org/abs/2404.07143) integration.
-- Speech Encoder integration, possibly Whisper-like architecture.
 - 3D RoPE for continuous vision input (video).
 - ~~Flash Attention integration.~~ ✔️
 - Diffusion Transformer (DiT) integration for image detokenization.

@@ -1,5 +1,7 @@
 from safetensors.torch import save_file, load_file
 import json
+from huggingface_hub import Repository, HfApi, HfFolder
+import os
 
 """
 This is the code for saving and loading the model with safetensors format,
@@ -35,3 +37,28 @@ def load_model_weights(model, base_path, num_files=1):
             state_dict.update(chunk_state_dict)
 
     model.load_state_dict(state_dict)
+
+def push_to_hf(model_dir, model_name, user):
+    """
+    Push the trained model to HuggingFace Hub.
+    
+    Args:
+        model_dir: Directory where the model is saved.
+        model_name: Desired name of the model on HuggingFace Hub.
+        user: HuggingFace username.
+        token: HuggingFace access token.
+    """
+
+    token = os.getenv('HF_TOKEN')  # Ensure your HF token is set as an environment variable
+
+    repo_id = f"{user}/{model_name}"
+    api = HfApi()
+    try:
+        api.create_repo(repo_id=repo_id, exist_ok=True)
+    except Exception as e:
+        print(f"Repository creation failed: {e}")
+
+    repo = Repository(local_dir=model_dir, clone_from=repo_id, use_auth_token=token)
+    repo.git_add()
+    repo.git_commit("Upload fine-tuned custom Transformer model")
+    repo.git_push()
