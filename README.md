@@ -41,7 +41,8 @@ YouTube progress documentation playlist:
 Soon:
 - [Infini-attention](https://arxiv.org/abs/2404.07143) integration.
 - Speech generation integration.
-- [Discrete Latent Representation](https://arxiv.org/abs/2312.01203).
+- [Discrete Latent Representation](https://arxiv.org/abs/2312.01203)."
+- [Grokfast](https://arxiv.org/abs/2405.20233)
 - Mamba2 block (?).
 - Kolmogorov Arnold Network (KAN).
 - Mixture of Experts block.
