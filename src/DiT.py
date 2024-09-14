@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 from transformers import PreTrainedModel, PretrainedConfig
+from main import TransformerBlock
 
 """
 Placeholder implementation for Diffusion Transformer (DiT) for image detokenization.

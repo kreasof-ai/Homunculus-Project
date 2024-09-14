@@ -19,7 +19,10 @@ Key features:
 - Finetuning scripts example with LoRA adapters, with and without quantization.
 - Add BitNet implementation.
 - Flash Attention implementation.
-- Speech encoder
+- Speech encoder.
+- 2D and 3D RoPE.
+- Diffusion Transformer for image detokenization.
+- Influential token extraction from attention heatmap.
 - Jupyter notebook example, both for training and finetuning.
 - Dual license open-source for individuals, paid for commercial uses.
 
@@ -37,13 +40,8 @@ YouTube progress documentation playlist:
 
 Soon:
 - [Infini-attention](https://arxiv.org/abs/2404.07143) integration.
-- 3D RoPE for continuous vision input (video).
-- Diffusion Transformer (DiT) integration for image detokenization.
 - Speech generation integration.
-- Influential token extraction.
 - [Discrete Latent Representation](https://arxiv.org/abs/2312.01203).
-- HuggingFace Hub integration (dataset and upload models).
-- xFormers.
 - Mamba2 block (?).
 - Kolmogorov Arnold Network (KAN).
 - Mixture of Experts block.
