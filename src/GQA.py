@@ -20,8 +20,8 @@ class GroupedQueryAttention(nn.Module):
         assert (self.head_dim * num_heads == embed_size), "embed_size must be divisible by num_heads"
 
         self.query = nn.Linear(embed_size, embed_size)
-        self.key = nn.Linear(embed_size, embed_size)
-        self.value = nn.Linear(embed_size, embed_size)
+        self.key = nn.Linear(embed_size, num_kv_heads * self.kv_head_dim)
+        self.value = nn.Linear(embed_size, num_kv_heads * self.kv_head_dim)
         self.out = nn.Linear(embed_size, embed_size)
 
         self.attention_type = attention_type
@@ -31,7 +31,7 @@ class GroupedQueryAttention(nn.Module):
 
     def forward(self, q, k, v, mask=None):
         b, n, _ = q.shape
-
+        
         # Linear projections
         q = self.query(q).view(b, n, self.num_heads, self.head_dim).transpose(1, 2)  # (b, num_heads, n, head_dim)
         k = self.key(k).view(b, n, self.num_heads, self.head_dim).transpose(1, 2)
