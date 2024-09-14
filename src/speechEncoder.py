@@ -5,7 +5,7 @@ import torch.nn as nn
 from transformers import Wav2Vec2Model
 
 class SpeechEncoder(nn.Module):
-    def __init__(self, pretrained_model='facebook/wav2vec2-base-960h', embed_size=768):
+    def __init__(self, pretrained_model='facebook/wav2vec2-large-xlsr-53', embed_size=768):
         super(SpeechEncoder, self).__init__()
         self.wav2vec = Wav2Vec2Model.from_pretrained(pretrained_model)
         self.proj = nn.Linear(self.wav2vec.config.hidden_size, embed_size)
