@@ -39,7 +39,7 @@ YouTube progress documentation playlist:
 - First short brief (27 July 2024): [https://youtu.be/NjK1BJyhrlI](https://youtu.be/NjK1BJyhrlI)
 
 Soon:
-- [Infini-attention](https://arxiv.org/abs/2404.07143) integration.
+- Short-term memory injection.
 - Speech generation integration.
 - [Discrete Latent Representation](https://arxiv.org/abs/2312.01203)."
 - [Grokfast](https://arxiv.org/abs/2405.20233)
