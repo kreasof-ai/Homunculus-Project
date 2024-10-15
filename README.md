@@ -40,6 +40,7 @@ YouTube progress documentation playlist:
 
 Soon:
 - Short-term memory injection.
+- [SageAttention](https://github.com/thu-ml/SageAttention) implementation.
 - Speech generation integration.
 - [Discrete Latent Representation](https://arxiv.org/abs/2312.01203)."
 - [Grokfast](https://arxiv.org/abs/2405.20233)
